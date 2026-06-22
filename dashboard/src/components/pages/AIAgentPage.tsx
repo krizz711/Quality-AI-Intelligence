@@ -35,7 +35,7 @@ interface ScanResult {
 interface FleetRow { process: string; in_control: boolean; violation_count: number; copq_total: number }
 interface FleetResult { source: string; processes: FleetRow[]; at_risk: number; total_exposure: number }
 
-const AGENT_ICON: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
+const AGENT_ICON: Record<string, React.ComponentType<{ size?: number; className?: string; style?: React.CSSProperties }>> = {
   process_monitor: Activity, business_analyst: DollarSign, action_dispatch: Send, measurement_analyst: ShieldCheck,
 };
 const AGENTS = [
