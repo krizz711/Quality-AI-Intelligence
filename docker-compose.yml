@@ -1,0 +1,357 @@
+services:
+  timescaledb:
+    image: timescale/timescaledb:2.27.1-pg15
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-arad_quality}
+      POSTGRES_USER: ${POSTGRES_USER:-arad}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-arad_pass}
+    volumes:
+      - timescale_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U arad -d arad_quality"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2G
+        reservations:
+          memory: 512M
+    networks:
+      - arad-network
+
+  pgadmin:
+    image: dpage/pgadmin4:8.14
+    ports:
+      - "5050:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-admin@arad.com}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-admin}
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+    networks:
+      - arad-network
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+    healthcheck:
+      test: ["CMD-SHELL", "cub zk-ready localhost 2181"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+        reservations:
+          memory: 128M
+    networks:
+      - arad-network
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:29092,EXTERNAL://localhost:9092
+      KAFKA_LISTENERS: INTERNAL://0.0.0.0:29092,EXTERNAL://0.0.0.0:9092
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-topics --bootstrap-server localhost:29092 --list"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1G
+        reservations:
+          memory: 256M
+    networks:
+      - arad-network
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:v0.7.2
+    depends_on:
+      - kafka
+    ports:
+      - "8080:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: arad-local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+    networks:
+      - arad-network
+
+  api:
+    build:
+      context: .
+      dockerfile: docker/api/Dockerfile
+    image: arad-quality-agent-api:0.1.0
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-arad_quality}
+      POSTGRES_USER: ${POSTGRES_USER:-arad}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-arad_pass}
+      DB_HOST: timescaledb
+      DB_PORT: "5432"
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      KAFKA_GROUP_ID: ${KAFKA_GROUP_ID:-arad-quality-agent-test-consumer}
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.0-flash}
+      LLM_PROVIDER: ${LLM_PROVIDER:-gemini}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
+      DASHBOARD_URL: ${DASHBOARD_URL:-http://localhost:3000}
+      ML_TOOL_NAME: ${ML_TOOL_NAME:-mlflow}
+      QMS_API_URL: ${QMS_API_URL:-}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM_ADDRESS: ${SMTP_FROM_ADDRESS:-}
+      ALERT_EMAIL_RECIPIENTS: ${ALERT_EMAIL_RECIPIENTS:-}
+      SMS_WEBHOOK_URL: ${SMS_WEBHOOK_URL:-}
+      SMS_AUTH_TOKEN: ${SMS_AUTH_TOKEN:-}
+      SMS_FROM_NUMBER: ${SMS_FROM_NUMBER:-}
+      SMS_TO_NUMBERS: ${SMS_TO_NUMBERS:-}
+      TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID:-}
+      TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN:-}
+      JIRA_URL: ${JIRA_URL:-}
+      JIRA_EMAIL: ${JIRA_EMAIL:-}
+      JIRA_API_TOKEN: ${JIRA_API_TOKEN:-}
+      JIRA_PROJECT_KEY: ${JIRA_PROJECT_KEY:-QUAL}
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      API_AUTH_KEY: ${API_AUTH_KEY}
+      JWT_SECRET: ${JWT_SECRET:-dev-jwt-secret-change-me}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
+      ALLOW_MOCK_DATA: "false"
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+      MEASUREMENTS_TOPIC: ${MEASUREMENTS_TOPIC:-quality.measurements}
+      MEASUREMENTS_DLQ_TOPIC: ${MEASUREMENTS_DLQ_TOPIC:-quality.measurements.dlq}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      SEED_DEMO_DATA: ${SEED_DEMO_DATA:-false}
+      ENABLE_AUTONOMOUS_MONITOR: ${ENABLE_AUTONOMOUS_MONITOR:-true}
+      MONITOR_INTERVAL_SECONDS: ${MONITOR_INTERVAL_SECONDS:-30}
+      ENABLE_MES_CONNECTOR: ${ENABLE_MES_CONNECTOR:-true}
+      MES_POLL_INTERVAL_SECONDS: ${MES_POLL_INTERVAL_SECONDS:-60}
+      MES_API_URL: ${MES_API_URL:-}
+      MES_API_TOKEN: ${MES_API_TOKEN:-}
+      MES_AUTH_HEADER: ${MES_AUTH_HEADER:-}
+      MES_AUTH_VALUE: ${MES_AUTH_VALUE:-}
+      MES_RECORDS_PATH: ${MES_RECORDS_PATH:-}
+      MES_FIELD_MAP: ${MES_FIELD_MAP:-}
+      MES_ID_FIELD: ${MES_ID_FIELD:-}
+      MES_SINCE_PARAM: ${MES_SINCE_PARAM:-}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/live"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 1G
+        reservations:
+          memory: 256M
+    networks:
+      - arad-network
+    command: ["sh", "/app/scripts/docker_api_entrypoint.sh"]
+
+  consumer:
+    image: arad-quality-agent-api:0.1.0
+    profiles:
+      - legacy-consumer
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+    command:
+      [
+        "sh",
+        "-c",
+        "export DATABASE_URL=$$(python /app/scripts/build_database_url.py) && python -m agent.consumer",
+      ]
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-arad_quality}
+      POSTGRES_USER: ${POSTGRES_USER:-arad}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-arad_pass}
+      DB_HOST: timescaledb
+      DB_PORT: "5432"
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      API_AUTH_KEY: ${API_AUTH_KEY}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+        reservations:
+          memory: 128M
+    networks:
+      - arad-network
+
+  dashboard:
+    build:
+      context: ./dashboard
+    image: arad-quality-agent-dashboard:0.1.0
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    environment:
+      API_URL: ${API_URL:-http://api:8000}
+      API_AUTH_KEY: ${API_AUTH_KEY}
+      NEXT_PUBLIC_ALLOW_MOCK_DATA: ${NEXT_PUBLIC_ALLOW_MOCK_DATA:-false}
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+        reservations:
+          memory: 128M
+    networks:
+      - arad-network
+
+  mlflow:
+    build:
+      context: .
+      dockerfile: docker/mlflow/Dockerfile
+    image: arad-quality-agent-mlflow:2.18.0
+    ports:
+      - "5000:5000"
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-arad_quality}
+      POSTGRES_USER: ${POSTGRES_USER:-arad}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-arad_pass}
+      DB_HOST: timescaledb
+      DB_PORT: "5432"
+    command: >
+      sh -c "mlflow server
+      --host 0.0.0.0
+      --port 5000
+      --backend-store-uri $$(python /scripts/build_database_url.py --sync)
+      --default-artifact-root /mlflow/artifacts"
+    volumes:
+      - ./mlflow-artifacts:/mlflow/artifacts
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:5000/', timeout=5)\""]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1G
+        reservations:
+          memory: 256M
+    networks:
+      - arad-network
+
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+    networks:
+      - arad-network
+
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+    networks:
+      - arad-network
+
+  grafana:
+    image: grafana/grafana:11.4.0
+    ports:
+      - "3002:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_PATHS_PROVISIONING: /etc/grafana/provisioning
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      - prometheus
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+    networks:
+      - arad-network
+
+networks:
+  arad-network:
+
+volumes:
+  timescale_data:
+  grafana_data:

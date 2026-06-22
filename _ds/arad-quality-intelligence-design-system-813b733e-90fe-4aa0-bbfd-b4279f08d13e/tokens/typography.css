@@ -1,0 +1,31 @@
+/* Arad Quality Intelligence — Typography tokens */
+:root {
+  /* ── Families ── */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', 'Cascadia Code', monospace;
+  --font-display: var(--font-sans);
+  --font-data: var(--font-mono);   /* every metric / measurement / % uses mono */
+
+  /* ── Size scale ── */
+  --text-caption: 12px;   /* captions, table headers, attributions */
+  --text-body: 14px;      /* body, table cells */
+  --text-subhead: 16px;   /* subheadings, emphasized body */
+  --text-heading: 22px;   /* section / page headings */
+  --text-display: 34px;   /* display, hero numbers */
+  --text-kpi: 30px;       /* KPI card numbers */
+
+  /* ── Weights ── */
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  /* ── Line heights ── */
+  --leading-tight: 1.2;
+  --leading-snug: 1.35;
+  --leading-normal: 1.6;
+
+  /* ── Tracking ── */
+  --tracking-caps: 0.08em;   /* ALL-CAPS labels & table headers */
+  --tracking-tight: -0.01em; /* large display numbers */
+}

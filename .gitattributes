@@ -1,0 +1,24 @@
+# Keep binary files byte-exact — never apply line-ending (CRLF/LF) conversion.
+# Protects the setup-guide PDF, images, fonts, archives and DB files on
+# checkout/clone, regardless of a contributor's core.autocrlf setting.
+*.pdf    binary
+*.png    binary
+*.jpg    binary
+*.jpeg   binary
+*.gif    binary
+*.ico    binary
+*.webp   binary
+*.svgz   binary
+*.woff   binary
+*.woff2  binary
+*.ttf    binary
+*.otf    binary
+*.eot    binary
+*.zip    binary
+*.gz     binary
+*.db     binary
+*.xlsx   binary
+*.xls    binary
+
+# Default: let Git normalize text line endings to LF in the repository.
+* text=auto eol=lf

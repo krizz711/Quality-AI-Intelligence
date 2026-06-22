@@ -1,0 +1,11 @@
+<svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Arad">
+  <defs>
+    <linearGradient id="aradMark" x1="8" y1="4" x2="40" y2="44" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#6366F1"></stop>
+      <stop offset="1" stop-color="#3B82F6"></stop>
+    </linearGradient>
+  </defs>
+  <path d="M24 3.5 41.7 13.75v20.5L24 44.5 6.3 34.25v-20.5L24 3.5Z" stroke="url(#aradMark)" stroke-width="2.4" stroke-linejoin="round"></path>
+  <path d="M24 14 33.6 19.5v11L24 36l-9.6-5.5v-11L24 14Z" fill="url(#aradMark)" fill-opacity="0.16" stroke="url(#aradMark)" stroke-width="1.6" stroke-linejoin="round"></path>
+  <circle cx="24" cy="25" r="2.4" fill="#3B82F6"></circle>
+</svg>

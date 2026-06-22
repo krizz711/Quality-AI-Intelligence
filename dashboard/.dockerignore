@@ -1,0 +1,10 @@
+.next
+node_modules
+coverage
+out
+build
+.env*
+*.log
+*.tsbuildinfo
+next-env.d.ts
+forge_ref.html

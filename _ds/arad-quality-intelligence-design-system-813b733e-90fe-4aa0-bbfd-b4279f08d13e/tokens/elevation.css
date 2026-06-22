@@ -1,0 +1,16 @@
+/* Arad Quality Intelligence — Elevation (blue-tinted, never grey) */
+:root {
+  /* Hairline ring + soft drop, blue-tinted */
+  --shadow-sm: 0 0 0 1px rgba(59,130,246,0.06), 0 1px 2px rgba(0,0,10,0.4);
+  --shadow-md: 0 0 0 1px rgba(59,130,246,0.08), 0 4px 24px rgba(0,0,10,0.4);
+  --shadow-lg: 0 0 0 1px rgba(59,130,246,0.10), 0 12px 40px rgba(0,0,10,0.55);
+  --shadow-drawer: -12px 0 48px rgba(0,0,10,0.6);
+
+  /* Glow used on hover for interactive cards */
+  --glow-primary: 0 0 0 1px rgba(59,130,246,0.35), 0 0 20px rgba(59,130,246,0.12);
+  --glow-ai: 0 0 0 1px rgba(99,102,241,0.35), 0 0 20px rgba(99,102,241,0.12);
+
+  /* Focus ring for inputs / buttons */
+  --ring-focus: 0 0 0 3px rgba(59,130,246,0.15);
+  --ring-focus-border: var(--color-primary);
+}

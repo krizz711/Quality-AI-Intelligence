@@ -1,0 +1,54 @@
+/* Arad Quality Intelligence — Color tokens
+   Dark industrial-tech. Aerospace control room meets SaaS. */
+:root {
+  /* ── Base surfaces (near-black, never pure black) ── */
+  --color-bg: #0A0B0F;              /* app background */
+  --color-surface: #111318;         /* cards, panels */
+  --color-surface-elevated: #181C24;/* popovers, drawers, hovered surfaces */
+  --color-surface-inset: #0D1017;   /* inputs, wells */
+  --color-surface-hover: #161B26;   /* table row hover */
+  --color-border: #1E2330;          /* borders / dividers */
+  --color-border-strong: #2A3142;   /* emphasized borders */
+
+  /* ── Text ── */
+  --color-text: #F1F5F9;            /* primary */
+  --color-text-secondary: #94A3B8;  /* secondary */
+  --color-text-muted: #64748B;      /* muted / disabled / axis labels */
+
+  /* ── Accents ── */
+  --color-primary: #3B82F6;         /* electric blue — engineering precision */
+  --color-primary-hover: #2563EB;
+  --color-primary-soft: rgba(59,130,246,0.12);
+  --color-secondary: #6366F1;       /* indigo — AI / intelligence */
+  --color-secondary-soft: rgba(99,102,241,0.12);
+
+  /* ── Semantic status ── */
+  --color-success: #10B981;         /* pass / good */
+  --color-warning: #F59E0B;         /* conditional / warn */
+  --color-critical: #EF4444;        /* fail / critical */
+  --color-info: #3B82F6;
+
+  /* ── Status: badge fills + text (paired) ── */
+  --color-pass-bg: #022C22;     --color-pass-text: #34D399;
+  --color-cond-bg: #422006;     --color-cond-text: #FCD34D;
+  --color-fail-bg: #450A0A;     --color-fail-text: #F87171;
+  --color-info-bg: #0C1A40;     --color-info-text: #93C5FD;
+  --color-purple-bg: #1E1B4B;   --color-purple-text: #A5B4FC;
+
+  /* ── Semantic aliases ── */
+  --surface-card: var(--color-surface);
+  --surface-app: var(--color-bg);
+  --text-body: var(--color-text);
+  --text-label: var(--color-text-secondary);
+  --accent: var(--color-primary);
+  --accent-ai: var(--color-secondary);
+
+  /* ── Chart-specific ── */
+  --chart-line: #F1F5F9;            /* data line: solid white */
+  --chart-ucl: #EF4444;            /* control limits, dashed red tint */
+  --chart-cl: #3B82F6;             /* center line, dashed blue tint */
+  --chart-grid: #1E2330;
+  --chart-violation: #EF4444;
+  --chart-fill-from: rgba(59,130,246,0.16);
+  --chart-fill-to: rgba(59,130,246,0);
+}

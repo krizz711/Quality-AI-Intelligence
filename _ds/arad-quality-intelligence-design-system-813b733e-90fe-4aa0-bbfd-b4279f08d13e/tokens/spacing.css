@@ -1,0 +1,32 @@
+/* Arad Quality Intelligence — Spacing, radii & layout tokens */
+:root {
+  /* ── Spacing scale (4px base) ── */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* ── Radii ── */
+  --radius-sm: 4px;    /* badges, pills, small chips */
+  --radius-md: 6px;    /* buttons, inputs */
+  --radius-lg: 10px;   /* cards, panels */
+  --radius-xl: 14px;   /* large surfaces, drawers */
+  --radius-full: 999px;
+
+  /* ── Layout ── */
+  --sidebar-expanded: 220px;
+  --sidebar-collapsed: 64px;
+  --header-height: 64px;
+  --control-height: 36px;   /* standard button */
+  --input-height: 40px;     /* form inputs */
+
+  /* ── Motion ── */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1); /* @kind other */
+  --transition: 150ms ease-out; /* @kind other */
+}

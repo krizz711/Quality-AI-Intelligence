@@ -1,0 +1,72 @@
+# ─── Environment ─────────────────────────────────────────────────────────────
+.env
+
+# Legacy nested clone — do not track; use repo root only
+arad-quality-agent/
+
+# ─── Python ──────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+*.egg
+*.log
+
+# ─── Virtual environments ───────────────────────────────────────────────────
+.venv/
+.venv-adk/
+venv/
+ENV/
+
+# ─── ADK agent layer runtime ────────────────────────────────────────────────
+logs/adk_audit.jsonl
+
+# ─── Poetry ──────────────────────────────────────────────────────────────────
+poetry.lock
+
+# ─── IDE ─────────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ─── Testing / Coverage ─────────────────────────────────────────────────────
+.pytest_cache/
+htmlcov/
+.coverage
+coverage.xml
+
+# ─── mypy ────────────────────────────────────────────────────────────────────
+.mypy_cache/
+
+# ─── Ruff ────────────────────────────────────────────────────────────────────
+.ruff_cache/
+
+# ─── OS ──────────────────────────────────────────────────────────────────────
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# ─── Test artifacts ──────────────────────────────────────────────────────────
+*.db
+test_results*.txt
+*_log.txt
+chat_body.json
+
+# ─── Wrong-project design systems ────────────────────────────────────────────
+_ds/londonrental-*
+
+# --- Scratch test dumps / DB backups (repo hygiene) ---
+*.db.bak
+*.db-journal
+test_out*.txt
+unit_test_log*.txt
+*_log_test.txt
+
+# ─── Demo-video build artifacts (regenerable; keep scripts + final mp4) ──────
+demo-video/output/clip_*.mp4
+demo-video/output/concat_list.txt
+demo-video/screenshots/login_debug.png
+

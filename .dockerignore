@@ -1,0 +1,15 @@
+.git
+.pytest_cache
+.ruff_cache
+.mypy_cache
+.venv
+venv
+__pycache__
+*.pyc
+.coverage
+htmlcov
+.env
+mlflow-artifacts
+dashboard/.next
+dashboard/node_modules
+dashboard/*.log

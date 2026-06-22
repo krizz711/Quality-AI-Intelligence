@@ -1,0 +1,88 @@
+[tool.poetry]
+name = "arad-quality-agent"
+version = "0.1.0"
+description = "Manufacturing quality control agent with GR&R analysis, SPC charting, and intelligent alerting"
+authors = ["Arad Quality Team"]
+readme = "README.md"
+packages = [
+    { include = "agent" },
+    { include = "core" },
+    { include = "grr" },
+    { include = "schemas" },
+    { include = "spc" },
+    { include = "api" },
+]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+pandas = "^2.2"
+numpy = "^2.0"
+scipy = "^1.14"
+fastapi = "^0.115"
+uvicorn = { version = "^0.34", extras = ["standard"] }
+aiokafka = "^0.10"
+sqlalchemy = { version = "^2.0", extras = ["asyncio"] }
+asyncpg = "^0.30"
+mlflow = "^2.18"
+reportlab = "^4.2"
+python-dotenv = "^1.0"
+pydantic-settings = "^2.6"
+httpx = "^0.28.1"
+google-generativeai = "^0.8.5"
+anthropic = ">=0.40"
+openai = ">=1.40"
+prometheus-fastapi-instrumentator = "^7.1.0"
+python-json-logger = "^4.1.0"
+python-jose = { version = "^3.3.0", extras = ["cryptography"] }
+passlib = { version = "^1.7.4", extras = ["bcrypt"] }
+slowapi = "^0.1.9"
+redis = "^5.2"
+websockets = "^15.0"
+tenacity = "^9.1.4"
+aiosmtplib = "^5.1.0"
+twilio = "^9.10.9"
+jinja2 = "^3.1.6"
+python-multipart = ">=0.0.18"
+openpyxl = "^3.1"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3"
+pytest-asyncio = "^0.24"
+ruff = "^0.8"
+mypy = "^1.13"
+pytest-cov = "^7.1.0"
+confluent-kafka = "^2.14.0"
+
+# Kaggle ADK capstone layer (adk_agent/). Install with: poetry install --with adk
+# or, standalone:  pip install google-adk mcp python-dotenv requests matplotlib nbformat
+[tool.poetry.group.adk]
+optional = true
+
+[tool.poetry.group.adk.dependencies]
+google-adk = ">=2.0"
+mcp = ">=1.0"
+requests = "^2.31"
+matplotlib = "^3.7"
+nbformat = "^5.9"
+# Persistent ADK session/state store (DatabaseSessionService -> TimescaleDB; SQLite fallback)
+sqlalchemy = { version = "^2.0", extras = ["asyncio"] }
+asyncpg = "^0.30"
+aiosqlite = "^0.20"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+markers = [
+    "integration: marks tests that require live Docker services (deselect with '-m not integration')",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
