@@ -74,6 +74,30 @@ class QualityViolation(Base):
     created_at: Mapped[datetime.datetime] = mapped_column(default=lambda: datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None))
 
 
+class SpcBaseline(Base):
+    """Frozen SPC control limits for a process (Phase II monitoring).
+
+    One row per process (``process_name`` = the characteristic the SPC monitor
+    tracks). Limits are computed from a validated, in-control baseline window and
+    then held fixed so later points are judged against stable limits instead of
+    self-inflating ones. Read by both the API and the autonomous monitor so they
+    agree on what "out of control" means. See ``spc.baseline`` / ``core.spc_baseline_store``.
+    """
+
+    __tablename__ = "spc_baselines"
+
+    process_name: Mapped[str] = mapped_column(String(128), primary_key=True)
+    ucl: Mapped[float] = mapped_column(Float)
+    cl: Mapped[float] = mapped_column(Float)
+    lcl: Mapped[float] = mapped_column(Float)
+    sigma: Mapped[float] = mapped_column(Float)
+    n_points: Mapped[int] = mapped_column(Integer)
+    created_by: Mapped[str | None] = mapped_column(String(128))
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        default=lambda: datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+    )
+
+
 class ReviewQueue(Base):
     __tablename__ = "review_queue"
 

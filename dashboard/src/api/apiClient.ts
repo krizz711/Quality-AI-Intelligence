@@ -445,6 +445,36 @@ export const getSPCHistory = (processName: string) =>
 export const getSPCProcesses = () =>
   apiClient.get<SPCProcessListResponse>("/api/v1/spc/processes");
 
+// SPC baselines (frozen control limits, Phase II monitoring)
+export interface SPCBaseline {
+  process_name: string;
+  configured: boolean;
+  ucl?: number | null;
+  cl?: number | null;
+  lcl?: number | null;
+  sigma?: number | null;
+  n_points?: number | null;
+}
+
+export interface SPCBaselineEstablishResponse {
+  ok: boolean;
+  reason: string;
+  process_name: string;
+  baseline?: SPCBaseline | null;
+  violations: Record<string, number[]>;
+}
+
+export const getSPCBaseline = (processName: string) =>
+  apiClient.get<SPCBaseline>(`/api/v1/spc/baseline/${encodeURIComponent(processName)}`);
+
+export const setSPCBaseline = (
+  processName: string,
+  body: { measurements?: number[]; window?: number; force?: boolean } = {},
+) => apiClient.post<SPCBaselineEstablishResponse>(`/api/v1/spc/baseline/${encodeURIComponent(processName)}`, body);
+
+export const clearSPCBaseline = (processName: string) =>
+  apiClient.delete<SPCBaseline>(`/api/v1/spc/baseline/${encodeURIComponent(processName)}`);
+
 // Dashboard
 export const getDashboardSummary = () =>
   apiClient.get<DashboardSummaryResponse>("/api/v1/dashboard/summary");
