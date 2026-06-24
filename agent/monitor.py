@@ -113,8 +113,19 @@ class ContinuousMonitor:
             values = [float(r["measured_value"]) for r in reversed(rows)]
             i_chart, _ = individuals_mr_chart(values)
             chart_values = np.asarray(i_chart.points, dtype=float)
-            sigma = i_chart.limits.sigma
-            violations = evaluate_all_rules(chart_values, i_chart.limits.cl, sigma)
+
+            # Prefer the frozen, validated baseline (Phase II) so the monitor and the
+            # SPC page judge points against the SAME limits; fall back to limits from
+            # this window when no baseline is set (Phase I).
+            from core import spc_baseline_store
+
+            baseline = await spc_baseline_store.get_baseline(characteristic_name)
+            if baseline is not None:
+                cl, sigma, ucl, lcl = baseline.cl, baseline.sigma, baseline.ucl, baseline.lcl
+            else:
+                cl, sigma = i_chart.limits.cl, i_chart.limits.sigma
+                ucl, lcl = i_chart.limits.ucl, i_chart.limits.lcl
+            violations = evaluate_all_rules(chart_values, cl, sigma)
 
             rule_1_hits = violations.get("rule_1", [])
             # Flag if ANY point in the analysed window breached the 3-sigma limits,
@@ -137,8 +148,8 @@ class ContinuousMonitor:
                         violation_type="nelson_rule_1",
                         severity="critical",
                         measured_value=float(chart_values[ooc_index]),
-                        ucl=i_chart.limits.ucl,
-                        lcl=i_chart.limits.lcl,
+                        ucl=ucl,
+                        lcl=lcl,
                         alert_sent=False,
                     )
                 )

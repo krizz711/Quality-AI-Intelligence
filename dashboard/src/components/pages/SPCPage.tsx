@@ -15,10 +15,14 @@ import {
   YAxis,
 } from "recharts";
 import {
+  clearSPCBaseline,
+  getSPCBaseline,
   getSPCHistory,
   getSPCProcesses,
+  setSPCBaseline,
   showToast,
   submitSPCData,
+  type SPCBaseline,
   type SPCDataResponse,
   type SPCProcessSummary,
   type SPCViolation,
@@ -72,9 +76,11 @@ function SPCTooltip({
   );
 }
 
-type BaselineLimits = { ucl: number; lcl: number; target: number };
+// How many recent points to baseline from, and the minimum needed to auto-establish
+// one. Mirrors the server's MIN_BASELINE_POINTS (spc/baseline.py).
+const BASELINE_WINDOW = 30;
+const MIN_BASELINE_POINTS = 15;
 
-const BASELINE_KEY = "arad-spc-baseline";
 const ACKS_KEY = "arad-spc-acks";
 
 const violationKey = (violation: SPCViolation) => `${violation.rule}:${violation.index}`;
@@ -108,7 +114,8 @@ export default function SPCPage() {
   const [measurementDraft, setMeasurementDraft] = useState("");
   const [measurements, setMeasurements] = useState<number[]>([]);
   const [analysis, setAnalysis] = useState<SPCDataResponse | null>(null);
-  const [baseline, setBaseline] = useState<BaselineLimits | null>(null);
+  const [baseline, setBaseline] = useState<SPCBaseline | null>(null);
+  const [baselineBusy, setBaselineBusy] = useState(false);
   const [loading, setLoading] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
@@ -116,15 +123,6 @@ export default function SPCPage() {
   const [noteDraft, setNoteDraft] = useState("");
   const [processes, setProcesses] = useState<SPCProcessSummary[]>([]);
   const [processesLoading, setProcessesLoading] = useState(false);
-
-  const persistBaseline = (name: string, limits: BaselineLimits | null) => {
-    setBaseline(limits);
-    if (limits) {
-      window.localStorage.setItem(BASELINE_KEY, JSON.stringify({ process: name, ...limits }));
-    } else {
-      window.localStorage.removeItem(BASELINE_KEY);
-    }
-  };
 
   // Monotonic sequence so a slow earlier response can never overwrite the
   // result of a newer submission (Gemini narratives make latencies uneven).
@@ -138,6 +136,17 @@ export default function SPCPage() {
     const seq = ++analysisSeq.current;
     setHistoryLoading(true);
     try {
+      // Refresh this process's frozen baseline (server-side) alongside its history, so
+      // the chart and the "Baseline locked" state always reflect the server. It's the
+      // source of truth: per-process, shared with the autonomous monitor, survives
+      // reloads and switching processes.
+      try {
+        const b = await getSPCBaseline(processName);
+        if (seq === analysisSeq.current) setBaseline(b.configured ? b : null);
+      } catch {
+        /* leave the current baseline as-is on a transient error */
+      }
+
       const history = await getSPCHistory(processName);
       const values = [...history.points]
         .reverse()
@@ -148,12 +157,12 @@ export default function SPCPage() {
       if (seq !== analysisSeq.current) return;
       setMeasurements(values);
       if (values.length >= 2) {
-        // Stats-only recompute: persist nothing (new_values: []).
+        // Stats-only recompute: persist nothing (new_values: []). The server applies
+        // the frozen baseline (if any) for this process, so we don't pass limits.
         const result = await submitSPCData({
           process_name: processName,
           measurements: values,
           new_values: [],
-          ...(baseline ? { ucl: baseline.ucl, lcl: baseline.lcl, target: baseline.target } : {}),
         });
         if (seq !== analysisSeq.current) return;
         setAnalysis(result);
@@ -165,24 +174,56 @@ export default function SPCPage() {
     } finally {
       setHistoryLoading(false);
     }
-  }, [processName, baseline]);
+  }, [processName]);
+
+  // Establish/refresh the frozen baseline from a window of recent points. The server
+  // validates the window is in control (and has real variation) before locking, so
+  // when it refuses we surface the reason rather than freeze bad limits.
+  const establishBaseline = useCallback(
+    async (name: string, opts: { measurements?: number[]; force?: boolean } = {}) => {
+      setBaselineBusy(true);
+      try {
+        const res = await setSPCBaseline(name, { window: BASELINE_WINDOW, ...opts });
+        if (res.ok && res.baseline) {
+          setBaseline(res.baseline);
+          showToast("Baseline locked — new points are judged against frozen limits.", "success");
+          await loadHistory();
+          return true;
+        }
+        showToast(res.reason || "Could not set baseline.", "info");
+        return false;
+      } catch {
+        showToast("Could not set baseline — check the connection.", "error");
+        return false;
+      } finally {
+        setBaselineBusy(false);
+      }
+    },
+    [loadHistory],
+  );
+
+  const removeBaseline = useCallback(
+    async (name: string) => {
+      setBaselineBusy(true);
+      try {
+        await clearSPCBaseline(name);
+        setBaseline(null);
+        showToast("Baseline cleared — limits recompute from recent data.", "success");
+        await loadHistory();
+      } catch {
+        showToast("Could not clear baseline.", "error");
+      } finally {
+        setBaselineBusy(false);
+      }
+    },
+    [loadHistory],
+  );
 
   useEffect(() => {
     const stored = window.localStorage.getItem(STORAGE_KEY);
     if (stored) {
       setProcessName(stored);
       setProcessDraft(stored);
-      try {
-        const rawBaseline = window.localStorage.getItem(BASELINE_KEY);
-        if (rawBaseline) {
-          const parsed = JSON.parse(rawBaseline) as BaselineLimits & { process?: string };
-          if (parsed.process === stored && Number.isFinite(parsed.ucl) && Number.isFinite(parsed.lcl)) {
-            setBaseline({ ucl: parsed.ucl, lcl: parsed.lcl, target: parsed.target });
-          }
-        }
-      } catch {
-        // Ignore corrupted baseline cache.
-      }
     }
   }, []);
 
@@ -253,6 +294,20 @@ export default function SPCPage() {
   const zoneOneLower = centerLine - sigma;
   const zoneTwoUpper = centerLine + 2 * sigma;
   const zoneTwoLower = centerLine - 2 * sigma;
+
+  // Recharts' "auto" domain is derived from the plotted series only — it ignores
+  // ReferenceLines/Areas, so UCL/LCL (and the lower zone band) get clipped whenever
+  // they sit outside the data range. Pin the domain to include both limits, with a
+  // little padding so the dashed lines and labels aren't flush against the edges.
+  const yDomain = useMemo<[number, number] | ["auto", "auto"]>(() => {
+    if (!analysis || measurements.length === 0) return ["auto", "auto"];
+    const lo = Math.min(analysis.lcl, ...measurements);
+    const hi = Math.max(analysis.ucl, ...measurements);
+    const span = hi - lo;
+    const pad = span > 0 ? span * 0.08 : Math.max(Math.abs(hi) * 0.01, 0.1);
+    return [lo - pad, hi + pad];
+  }, [analysis, measurements]);
+
   const activeViolations = analysis?.violations ?? [];
   const selectedViolation = activeViolations.find((violation) => violationKey(violation) === selectedKey) ?? null;
 
@@ -283,7 +338,8 @@ export default function SPCPage() {
     setProcessName(name);
     setMeasurements([]);
     setAnalysis(null);
-    persistBaseline(name, null);
+    // Do NOT clear the baseline here — selecting a process must keep its frozen limits.
+    // The processName effect loads this process's server-side baseline.
     showToast(`${name} added to SPC monitor.`);
   };
 
@@ -311,19 +367,20 @@ export default function SPCPage() {
     setLoading(true);
     const seq = ++analysisSeq.current;
     try {
+      // The server judges new points against this process's frozen baseline (if set),
+      // so we don't pass limits — drifting data can't inflate its own limits anymore.
       const result = await submitSPCData({
         process_name: processName,
         measurements: nextMeasurements,
         new_values: [value],
-        // Judge new points against frozen baseline limits (Phase II SPC);
-        // without this, drifting data inflates its own control limits.
-        ...(baseline ? { ucl: baseline.ucl, lcl: baseline.lcl, target: baseline.target } : {}),
       });
       if (seq !== analysisSeq.current) return;
       setAnalysis(result);
-      if (!baseline && nextMeasurements.length >= 15) {
-        persistBaseline(processName, { ucl: result.ucl, lcl: result.lcl, target: result.mean });
-        showToast("Control limits frozen from baseline. New points are judged against them.");
+      // Auto-establish a frozen baseline once enough points exist and none is set.
+      // The server validates the window is in control before locking (and returns a
+      // reason if not), so a bad baseline is never silently frozen.
+      if (!baseline && nextMeasurements.length >= MIN_BASELINE_POINTS) {
+        await establishBaseline(processName, { measurements: nextMeasurements });
       }
       if (result.violations.length) {
         showToast(`${result.violations.length} SPC violation${result.violations.length === 1 ? "" : "s"} detected.`);
@@ -349,8 +406,8 @@ export default function SPCPage() {
     try {
       const result = await submitSPCData({ process_name: processName, measurements: sample, new_values: sample });
       setAnalysis(result);
-      persistBaseline(processName, { ucl: result.ucl, lcl: result.lcl, target: result.mean });
-      showToast("Baseline established — control limits frozen for live monitoring.");
+      // Freeze the baseline server-side from these points (validated + shared).
+      await establishBaseline(processName, { measurements: sample });
     } finally {
       setLoading(false);
     }
@@ -503,11 +560,47 @@ export default function SPCPage() {
                   {historyLoading ? "Loading persisted history…" : `${chartPoints.length} measurements in the active window`}
                 </p>
               </div>
-              <div className="flex items-center gap-2">
-                {baseline && (
-                  <span className="badge badge-info h-7 gap-1.5 px-3" title={`Frozen limits — UCL ${baseline.ucl.toFixed(4)} · LCL ${baseline.lcl.toFixed(4)}`}>
-                    Baseline locked
-                  </span>
+              <div className="flex flex-wrap items-center gap-2">
+                {baseline ? (
+                  <>
+                    <span
+                      className="badge badge-info h-7 gap-1.5 px-3"
+                      title={
+                        baseline.ucl != null && baseline.lcl != null
+                          ? `Frozen limits — UCL ${baseline.ucl.toFixed(4)} · LCL ${baseline.lcl.toFixed(4)} · n=${baseline.n_points ?? "?"}`
+                          : "Frozen control limits"
+                      }
+                    >
+                      Baseline locked
+                    </span>
+                    <button
+                      onClick={() => processName && void establishBaseline(processName)}
+                      disabled={baselineBusy || !processName}
+                      className="btn btn-ghost h-7 gap-1.5 px-2.5 text-xs"
+                      title="Recompute the frozen limits from the most recent points (after a known process change)"
+                    >
+                      {baselineBusy ? <Loader2 size={12} className="animate-spin" /> : <RotateCcw size={12} />} Re-baseline
+                    </button>
+                    <button
+                      onClick={() => processName && void removeBaseline(processName)}
+                      disabled={baselineBusy || !processName}
+                      className="btn btn-ghost h-7 gap-1.5 px-2.5 text-xs"
+                      title="Remove the frozen baseline; limits recompute from recent data"
+                    >
+                      <X size={12} /> Clear
+                    </button>
+                  </>
+                ) : (
+                  measurements.length >= MIN_BASELINE_POINTS && (
+                    <button
+                      onClick={() => processName && void establishBaseline(processName)}
+                      disabled={baselineBusy || !processName}
+                      className="btn btn-secondary h-7 gap-1.5 px-3 text-xs"
+                      title="Freeze control limits from a stable, in-control window"
+                    >
+                      {baselineBusy ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />} Set baseline
+                    </button>
+                  )
                 )}
                 {activeViolations.length ? (
                   <span className="badge badge-critical h-7 gap-1.5 px-3">
@@ -539,7 +632,7 @@ export default function SPCPage() {
                     <ReferenceLine y={centerLine} stroke="var(--live)" strokeDasharray="4 4" label={{ value: "CL", position: "right", fill: "var(--live)", fontSize: 10 }} />
                     <ReferenceLine y={analysis.lcl} stroke="var(--critical)" strokeDasharray="8 4" label={{ value: "LCL", position: "right", fill: "var(--critical-text)", fontSize: 10 }} />
                     <XAxis dataKey="index" tickFormatter={(value) => String(Number(value) + 1)} tick={{ fill: "var(--text-muted)", fontSize: 10 }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fill: "var(--text-muted)", fontSize: 10 }} width={62} tickFormatter={(value) => Number(value).toFixed(3)} axisLine={false} tickLine={false} domain={["auto", "auto"]} />
+                    <YAxis tick={{ fill: "var(--text-muted)", fontSize: 10 }} width={62} tickFormatter={(value) => Number(value).toFixed(3)} axisLine={false} tickLine={false} domain={yDomain} allowDataOverflow />
                     <Tooltip content={<SPCTooltip />} />
                     <Line
                       type="monotone"

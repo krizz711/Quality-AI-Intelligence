@@ -54,12 +54,15 @@ pytest-cov = "^7.1.0"
 confluent-kafka = "^2.14.0"
 
 # Kaggle ADK capstone layer (adk_agent/). Install with: poetry install --with adk
-# or, standalone:  pip install google-adk mcp python-dotenv requests matplotlib nbformat
+# or, standalone:  pip install google-adk litellm mcp python-dotenv requests matplotlib nbformat
 [tool.poetry.group.adk]
 optional = true
 
 [tool.poetry.group.adk.dependencies]
 google-adk = ">=2.0"
+# LiteLLM backs ADK's non-Gemini providers (Claude/OpenAI) so the AI Agent page can
+# use whichever provider is chosen on the Connections page.
+litellm = ">=1.0"
 mcp = ">=1.0"
 requests = "^2.31"
 matplotlib = "^3.7"

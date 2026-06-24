@@ -1,0 +1,53 @@
+# Local dev override (auto-merged by `docker compose`).
+# Adds the ADK agent service that powers the dashboard "AI Agent" page, so a single
+#   docker compose up -d --build
+# brings up the WHOLE system — no host processes.
+#
+# Env comes from the root .env (compose reads it automatically). For the AI chat +
+# root-cause text, set GEMINI_API_KEY in .env; the scan/COPQ/draft loop works without.
+services:
+  agent:
+    build:
+      context: .
+      dockerfile: docker/agent/Dockerfile
+    image: arad-quality-agent-adk:0.1.0
+    restart: unless-stopped
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+    ports:
+      - "8090:8090"
+    environment:
+      # reach the platform API inside the compose network
+      API_URL: http://api:8000
+      API_AUTH_KEY: ${API_AUTH_KEY}
+      # LLM (chat + root-cause). The agent prefers the provider + key set on the
+      # Connections page (fetched from the API); these env vars are the standalone
+      # fallback if the API is unreachable. Empty is fine — the deterministic
+      # scan/COPQ loop still works without any key.
+      LLM_PROVIDER: ${LLM_PROVIDER:-gemini}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      # decoupled from the platform's GEMINI_MODEL (flash-lite is flaky at multi-agent synthesis)
+      GEMINI_MODEL: ${ADK_GEMINI_MODEL:-gemini-2.5-flash}
+      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-}
+      GOOGLE_GENAI_USE_VERTEXAI: "FALSE"
+      # persist ADK session state in the SAME TimescaleDB the platform uses
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-arad}:${POSTGRES_PASSWORD}@timescaledb:5432/${POSTGRES_DB:-arad_quality}
+      # optional direct-dispatch fallback (the agent prefers routing through the API)
+      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
+      JIRA_URL: ${JIRA_URL:-}
+      JIRA_EMAIL: ${JIRA_EMAIL:-}
+      JIRA_API_TOKEN: ${JIRA_API_TOKEN:-}
+      JIRA_PROJECT_KEY: ${JIRA_PROJECT_KEY:-QUAL}
+    networks:
+      - arad-network
+
+  # point the dashboard's AI Agent page at the in-network agent service
+  dashboard:
+    environment:
+      AGENT_URL: http://agent:8090

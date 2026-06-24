@@ -139,12 +139,46 @@ export default function AIAgentPage() {
     const msg = chatInput.trim();
     if (!msg || chatLoading) return;
     setChat((c) => [...c, { role: "user", text: msg }]); setChatInput(""); setChatLoading(true);
+
+    // Append the agent bubble lazily (on the first chunk) and update it in place as
+    // tokens stream in, so an empty bubble never flashes before the answer starts.
+    let started = false;
+    const setAgentText = (text: string) =>
+      setChat((c) => {
+        const next = [...c];
+        if (!started) { next.push({ role: "agent", text }); started = true; return next; }
+        for (let i = next.length - 1; i >= 0; i--) {
+          if (next[i].role === "agent") { next[i] = { role: "agent", text }; break; }
+        }
+        return next;
+      });
+
     try {
-      const r = await (await fetch("/api/agent/chat", {
+      const resp = await fetch("/api/agent/chat/stream", {
         method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message: msg }),
-      })).json();
-      setChat((c) => [...c, { role: "agent", text: r.response || "(no response)" }]);
-    } catch { setChat((c) => [...c, { role: "agent", text: "(agent unreachable)" }]); }
+      });
+      if (!resp.ok || !resp.body) throw new Error("stream unavailable");
+
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = "", acc = "";
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        const frames = buf.split("\n\n");
+        buf = frames.pop() || "";
+        for (const frame of frames) {
+          const line = frame.split("\n").find((l) => l.startsWith("data:"));
+          if (!line) continue;
+          let data: { t?: string; text?: string; answer?: string };
+          try { data = JSON.parse(line.slice(5).trim()); } catch { continue; }
+          if (data.t === "delta") { acc += data.text || ""; setAgentText(acc); }
+          else if (data.t === "final") { acc = data.answer || acc; setAgentText(acc); }
+        }
+      }
+      if (!started) setAgentText("(no response)");
+    } catch { setAgentText("(agent unreachable)"); }
     finally { setChatLoading(false); }
   }
 
