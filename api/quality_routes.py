@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import logging
 import json
+import os
 import time
 import uuid
 from datetime import datetime, timezone
@@ -25,11 +26,12 @@ from db.database import AsyncSessionLocal
 from db.models import Alert, AlertFeedback, AlertRule, AuditLog, Gage, GrrStudy, Measurement, NotificationDelivery
 from backend.services.audit_logger import log_event as audit_log_event
 from api.auth import get_current_user
-from core import settings_store
+from core import settings_store, spc_baseline_store
 from fastapi.responses import StreamingResponse
 import io, csv
 from grr.acceptance import evaluate
 from grr.calculator import grr_anova, grr_xbar_r
+from spc.baseline import Baseline, compute_baseline
 
 class AlertResolveResponse(BaseModel):
     alert_id: str
@@ -231,6 +233,34 @@ class SPCHistoryPoint(BaseModel):
 class SPCHistoryResponse(BaseModel):
     process_name: str
     points: list[SPCHistoryPoint]
+
+
+class SpcBaselineResponse(BaseModel):
+    process_name: str
+    configured: bool
+    ucl: float | None = None
+    cl: float | None = None
+    lcl: float | None = None
+    sigma: float | None = None
+    n_points: int | None = None
+
+
+class SpcBaselineEstablishRequest(BaseModel):
+    # Explicit window to baseline from; if omitted, the most recent `window`
+    # persisted measurements for the process are used.
+    measurements: list[float] | None = None
+    window: int = Field(default=30, ge=2, le=500)
+    # Lock the limits even if the baseline window isn't fully in control (Phase I
+    # override — the user has reviewed the flagged points).
+    force: bool = False
+
+
+class SpcBaselineEstablishResponse(BaseModel):
+    ok: bool                 # True only when the baseline was actually saved
+    reason: str              # why it wasn't saved (empty when ok)
+    process_name: str
+    baseline: SpcBaselineResponse | None = None
+    violations: dict[str, list[int]] = Field(default_factory=dict)
 
 
 class DashboardSummaryResponse(BaseModel):
@@ -902,6 +932,32 @@ async def clear_settings(channel: str, _user: dict = Depends(get_current_user)) 
     return {"settings": await settings_store.get_masked()}
 
 
+@router.get("/internal/llm-config")
+async def internal_llm_config(_user: dict = Depends(get_current_user)) -> dict:
+    """Active AI provider + decrypted key for the out-of-process ADK agent service.
+
+    The "AI Agent" page runs in its own process (see ``adk_agent``) and can't read
+    the encrypted Connections settings directly, so it fetches the active provider
+    and key here — authenticated with the internal API key, same as its other backend
+    calls. The Connections page (DB) is the source of truth; environment variables are
+    the fallback for standalone runs.
+
+    The key is returned in clear, so this endpoint is auth-gated and must stay
+    internal (never expose it un-authenticated, and never log the value).
+    """
+    cfg = await settings_store.get_decrypted()
+    provider = (cfg.get("llm.provider") or settings.llm_provider or "gemini").strip().lower()
+    provider = {"anthropic": "claude", "gpt": "openai", "google": "gemini"}.get(provider, provider)
+    if provider == "claude":
+        key = cfg.get("llm.anthropic_api_key") or settings.anthropic_api_key or os.environ.get("ANTHROPIC_API_KEY", "")
+    elif provider == "openai":
+        key = cfg.get("llm.openai_api_key") or settings.openai_api_key or os.environ.get("OPENAI_API_KEY", "")
+    else:
+        provider = "gemini"
+        key = cfg.get("llm.gemini_api_key") or settings.gemini_api_key or os.environ.get("GEMINI_API_KEY", "")
+    return {"provider": provider, "api_key": key, "configured": bool(key)}
+
+
 async def _probe_tcp(target: str, timeout: float = 1.5) -> bool:
     """Best-effort TCP reachability probe of the first host:port in ``target``."""
     import asyncio as _asyncio
@@ -1267,15 +1323,23 @@ async def _analyze_spc_data_impl(body: SPCDataRequest) -> SPCDataResponse:
         std_dev = float(np.std(values, ddof=1)) if len(values) > 1 else 0.0
 
         if body.ucl is not None and body.lcl is not None:
+            # Explicit limits in the request override anything stored (back-compat / tests).
             ucl = float(body.ucl)
             lcl = float(body.lcl)
             sigma = abs(ucl - lcl) / 6 if ucl != lcl else std_dev
             center_line = float(body.target) if body.target is not None else mean_value
         else:
-            sigma = std_dev
-            center_line = float(body.target) if body.target is not None else mean_value
-            ucl = center_line + 3 * sigma
-            lcl = center_line - 3 * sigma
+            stored = await spc_baseline_store.get_baseline(body.process_name)
+            if stored is not None:
+                # Phase II: judge points against the frozen, validated baseline so the
+                # limits don't drift with the data (the whole point of a baseline).
+                ucl, lcl, center_line, sigma = stored.ucl, stored.lcl, stored.cl, stored.sigma
+            else:
+                # No baseline yet → compute limits from the current window (Phase I).
+                sigma = std_dev
+                center_line = float(body.target) if body.target is not None else mean_value
+                ucl = center_line + 3 * sigma
+                lcl = center_line - 3 * sigma
 
         violations = _detect_western_electric_rules(values, center_line, sigma)
 
@@ -1459,6 +1523,97 @@ async def list_spc_processes() -> dict[str, Any]:
             for row in rows
         ]
     }
+
+
+def _baseline_payload(process_name: str, b: Baseline | None, *, configured: bool | None = None) -> SpcBaselineResponse:
+    if b is None:
+        return SpcBaselineResponse(process_name=process_name, configured=False)
+    return SpcBaselineResponse(
+        process_name=process_name,
+        configured=configured if configured is not None else True,
+        ucl=b.ucl, cl=b.cl, lcl=b.lcl, sigma=b.sigma, n_points=b.n_points,
+    )
+
+
+@router.get("/spc/baseline/{process_name}", response_model=SpcBaselineResponse)
+async def get_spc_baseline(process_name: str) -> SpcBaselineResponse:
+    """Return the frozen baseline limits for a process (or configured=false if none)."""
+    return _baseline_payload(process_name, await spc_baseline_store.get_baseline(process_name))
+
+
+@router.post("/spc/baseline/{process_name}", response_model=SpcBaselineEstablishResponse)
+async def set_spc_baseline(
+    process_name: str,
+    body: SpcBaselineEstablishRequest = Body(default_factory=SpcBaselineEstablishRequest),
+) -> SpcBaselineEstablishResponse:
+    """Establish (freeze) a baseline for a process from a stable, in-control window.
+
+    Uses the provided ``measurements`` or, if omitted, the most recent ``window``
+    persisted points. The window is validated (enough points, real variation, in
+    control) before it is locked; pass ``force=true`` to override the in-control check.
+    """
+    if body.measurements is not None:
+        values = [float(v) for v in body.measurements]
+    else:
+        async with AsyncSessionLocal() as session:
+            result = await session.execute(
+                text(
+                    """
+                    SELECT measured_value
+                    FROM measurements
+                    WHERE equipment_id = :p OR characteristic_name = :p
+                    ORDER BY timestamp DESC
+                    LIMIT :lim
+                    """
+                ),
+                {"p": process_name, "lim": body.window},
+            )
+            # DB returns newest-first; baseline math expects chronological order.
+            values = [float(r["measured_value"]) for r in reversed(result.mappings().all())]
+
+    result = compute_baseline(values, force=body.force)
+    if result.ok and result.baseline is not None:
+        await spc_baseline_store.save_baseline(process_name, result.baseline, created_by="spc_monitor")
+        async with AsyncSessionLocal() as session:
+            await _audit(
+                session,
+                actor="system",
+                action="spc_baseline_set",
+                entity_type="spc_process",
+                entity_id=process_name,
+                details={
+                    "ucl": result.baseline.ucl,
+                    "lcl": result.baseline.lcl,
+                    "n_points": result.baseline.n_points,
+                    "forced": body.force,
+                },
+            )
+            await session.commit()
+
+    return SpcBaselineEstablishResponse(
+        ok=result.ok,
+        reason=result.reason,
+        process_name=process_name,
+        baseline=_baseline_payload(process_name, result.baseline, configured=result.ok),
+        violations=result.violations,
+    )
+
+
+@router.delete("/spc/baseline/{process_name}", response_model=SpcBaselineResponse)
+async def clear_spc_baseline(process_name: str) -> SpcBaselineResponse:
+    """Remove a process's frozen baseline (re-baseline after a known process change)."""
+    if await spc_baseline_store.delete_baseline(process_name):
+        async with AsyncSessionLocal() as session:
+            await _audit(
+                session,
+                actor="system",
+                action="spc_baseline_cleared",
+                entity_type="spc_process",
+                entity_id=process_name,
+                details={},
+            )
+            await session.commit()
+    return SpcBaselineResponse(process_name=process_name, configured=False)
 
 
 @router.get("/audit/export")

@@ -2,8 +2,9 @@
 
 Detection and cost are deterministic (real SPC + COPQ math). This module adds the
 part where an LLM genuinely helps: a concise root-cause hypothesis and a specific
-corrective action, generated live by Gemini. Falls back to a sensible deterministic
-message if the model isn't reachable, so the scan never breaks.
+corrective action, generated live by the AI provider chosen on the Connections page
+(Gemini / Claude / OpenAI, via LiteLLM). Falls back to a sensible deterministic
+message if no key is configured or the model isn't reachable, so the scan never breaks.
 """
 
 from __future__ import annotations
@@ -27,12 +28,17 @@ def root_cause_analysis(
     total_copq: float = 0.0,
     savings: float = 0.0,
 ) -> str:
-    """Return a 3-4 sentence root cause + corrective action from Gemini (or a fallback)."""
+    """Return a 3-4 sentence root cause + corrective action from the active provider
+    (Gemini / Claude / OpenAI), or a deterministic fallback."""
     try:
-        from google import genai
+        from adk_agent import llm
 
-        client = genai.Client()
-        model = os.environ.get("GEMINI_MODEL") or "gemini-2.5-flash"
+        cfg = llm.resolve()
+        if not cfg.configured:
+            return _FALLBACK
+
+        import litellm
+
         prompt = (
             "You are a senior manufacturing quality engineer. A process just went out of "
             "statistical control. Using ONLY the facts below, respond in 3-4 sentences with "
@@ -43,8 +49,14 @@ def root_cause_analysis(
             f"Estimated cost of this event: ${total_copq:,.0f}; "
             f"early detection saved ${savings:,.0f} versus once-per-shift inspection."
         )
-        resp = client.models.generate_content(model=model, contents=prompt)
-        text = (getattr(resp, "text", None) or "").strip()
+        # resolve() already exported the key to the env var LiteLLM expects.
+        resp = litellm.completion(
+            model=llm.litellm_model(cfg),
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=400,
+            timeout=20,
+        )
+        text = (resp.choices[0].message.content or "").strip()
         return text or _FALLBACK
     except Exception as exc:  # no key / quota / network — stay graceful
         logger.warning("root_cause_analysis fell back: %s", exc)

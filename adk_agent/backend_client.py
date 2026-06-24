@@ -30,6 +30,25 @@ def _headers() -> dict[str, str]:
     return {"x-api-key": key} if key else {}
 
 
+def get_llm_config(timeout: float = 5.0) -> Optional[dict]:
+    """Fetch the active AI provider + key from the platform's Connections settings.
+
+    Returns ``{"provider", "api_key", "configured"}`` so the agent uses the key set
+    once on the Connections page (encrypted in the DB) instead of a separate env var.
+    Returns ``None`` when the backend is unreachable, so callers fall back to env.
+    """
+    try:
+        r = requests.get(
+            f"{_base()}/api/v1/internal/llm-config", headers=_headers(), timeout=timeout
+        )
+        if r.status_code == 200:
+            return r.json()
+        logger.info("llm-config endpoint returned HTTP %s; using env", r.status_code)
+    except requests.RequestException as exc:
+        logger.info("llm-config fetch failed (%s); using env", exc)
+    return None
+
+
 def is_available(timeout: float = 3.0) -> bool:
     try:
         r = requests.get(f"{_base()}/api/v1/spc/processes", headers=_headers(), timeout=timeout)

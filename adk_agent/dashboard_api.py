@@ -12,8 +12,10 @@ Registered onto the ADK FastAPI app (see web.py):
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from adk_agent import backend_client, skills
@@ -190,6 +192,32 @@ def register(app) -> None:
             return {"response": await run_query(req.message, verbose=False)}
         except Exception as exc:
             return {"response": f"(agent error: {exc})", "error": True}
+
+    @app.post("/agent/chat/stream")
+    async def agent_chat_stream(req: ChatReq) -> StreamingResponse:
+        """Stream the agent's answer as Server-Sent Events: ``{"t":"delta","text"}``
+        fragments for live typing, then one ``{"t":"final","answer"}`` with the full
+        reply. Powers the AI Agent page's chat (the upgraded Chat page)."""
+        from adk_agent.run import stream_query
+
+        async def event_stream():
+            def sse(obj: dict[str, Any]) -> str:
+                return f"data: {json.dumps(obj)}\n\n"
+
+            try:
+                async for kind, text in stream_query(req.message):
+                    if kind == "delta":
+                        yield sse({"t": "delta", "text": text})
+                    else:
+                        yield sse({"t": "final", "answer": text})
+            except Exception as exc:  # never break the stream — deliver the error as the answer
+                yield sse({"t": "final", "answer": f"(agent error: {exc})", "error": True})
+
+        return StreamingResponse(
+            event_stream(),
+            media_type="text/event-stream",
+            headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"},
+        )
 
     @app.post("/agent/dispatch")
     async def agent_dispatch(req: DispatchReq) -> dict[str, Any]:
