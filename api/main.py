@@ -1,5 +1,5 @@
 """
-FastAPI application — REST API for the Arad Quality Agent.
+FastAPI application — REST API for the Quality AI Agent.
 
 Endpoints:
   - POST /studies/grr       — Submit a new GR&R study
@@ -57,7 +57,7 @@ setup_logging(level=settings.log_level)
 logger = logging.getLogger(__name__)
 
 app = FastAPI(
-    title="Arad Quality Agent API",
+    title="Quality AI Agent API",
     description="Manufacturing quality control — GR&R analysis, SPC monitoring, and intelligent alerting.",
     version="0.1.0",
     lifespan=lifespan,

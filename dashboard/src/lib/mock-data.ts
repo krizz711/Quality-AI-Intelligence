@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════════════════
-// Realistic manufacturing mock data for the Arad Quality Intelligence Platform
+// Realistic manufacturing mock data for the Quality AI Intelligence Platform
 // ═══════════════════════════════════════════════════════════════════════════
 
 const NOW = new Date("2026-05-26T12:00:00Z").getTime();

@@ -15,7 +15,7 @@ import {
   Info,
   Loader2
 } from "lucide-react";
-import { getAlerts, recordAlertFeedback, resolveAlert, showToast, type AlertItem } from "@/api/apiClient";
+import { getAlertAccuracy, getAlertAnalysis, getAlerts, recordAlertFeedback, resolveAlert, showToast, type AlertAccuracyResponse, type AlertItem } from "@/api/apiClient";
 import { useRealtimeStream } from "@/api/realtime";
 import { parseApiDate } from "@/lib/utils";
 
@@ -115,13 +115,21 @@ export default function AlertsPage() {
   const [search, setSearch] = useState("");
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [selectedAlert, setSelectedAlert] = useState<AlertItem | null>(null);
+  const [accuracy, setAccuracy] = useState<AlertAccuracyResponse | null>(null);
+  const [analysis, setAnalysis] = useState<string | null>(null);
+  const [analysisLoading, setAnalysisLoading] = useState(false);
 
   const fetchAlerts = async (silent = false) => {
     try {
       if (!silent) setLoading(true);
-      // The API caps the page size at 50.
-      const res = await getAlerts({ limit: 50 });
+      // The API caps the page size at 50. Pull the alert-accuracy metric alongside so
+      // the header reflects the latest Relevant / False-Positive feedback.
+      const [res, acc] = await Promise.all([
+        getAlerts({ limit: 50 }),
+        getAlertAccuracy().catch(() => null),
+      ]);
       setAlerts(res.items);
+      if (acc) setAccuracy(acc);
     } catch (e) {
       console.error(e);
       if (!silent) showToast("Failed to fetch alerts");
@@ -149,8 +157,10 @@ export default function AlertsPage() {
   const handleResolve = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     try {
-      await resolveAlert(id);
-      showToast("Alert resolved successfully");
+      const res = await resolveAlert(id);
+      const n = res?.violations_acknowledged ?? 0;
+      // Surface that resolving actually cleared the linked SPC violation(s).
+      showToast(n > 0 ? `Alert resolved · ${n} linked violation${n === 1 ? "" : "s"} cleared` : "Alert resolved");
       fetchAlerts(true);
       if (selectedAlert?.id === id) {
         setSelectedAlert(prev => prev ? { ...prev, status: "resolved", resolved_at: new Date().toISOString() } : null);
@@ -168,9 +178,23 @@ export default function AlertsPage() {
         submitted_by: "quality-engineer",
       });
       showToast(isRelevant ? "Alert marked relevant." : "Alert marked false positive.");
+      void fetchAlerts(true); // refresh so the header accuracy metric reflects this vote
     } catch (e) {
       // toast shown by interceptor
     }
+  };
+
+  // Open the detail modal and fetch a real, provider-aware LLM analysis for this alert
+  // (replaces the old hardcoded "AI Analysis" blurb). Fetched in the handler, not an
+  // effect, so it doesn't add a setState-in-effect.
+  const openDetails = (alert: AlertItem) => {
+    setSelectedAlert(alert);
+    setAnalysis(null);
+    setAnalysisLoading(true);
+    getAlertAnalysis(alert.id)
+      .then((r) => setAnalysis(r.analysis))
+      .catch(() => setAnalysis(null))
+      .finally(() => setAnalysisLoading(false));
   };
 
   const filteredAlerts = useMemo(() => {
@@ -223,6 +247,33 @@ export default function AlertsPage() {
               <HeaderStat value={stats.active} label="Active" tone="var(--warning-text)" />
               <HeaderStat value={stats.critical} label="Critical" tone="var(--critical-text)" />
               <HeaderStat value={stats.resolvedToday} label="Resolved Today" tone="var(--success-text)" />
+              {accuracy && (
+                <div
+                  className="panel-inset flex min-w-[92px] flex-col items-center justify-center rounded-xl px-4 py-2.5"
+                  title={
+                    accuracy.accuracy_rate === null
+                      ? "No alert feedback yet — mark alerts Relevant / False Positive to build this metric"
+                      : `${accuracy.relevant_count}/${accuracy.feedback_count} marked relevant · target ${accuracy.target_rate}%`
+                  }
+                >
+                  <span
+                    className="stat-number text-xl"
+                    style={{
+                      color:
+                        accuracy.accuracy_rate === null
+                          ? "var(--text-muted)"
+                          : accuracy.target_met
+                            ? "var(--success-text)"
+                            : "var(--critical-text)",
+                    }}
+                  >
+                    {accuracy.accuracy_rate === null ? "—" : `${Math.round(accuracy.accuracy_rate)}%`}
+                  </span>
+                  <span className="mt-0.5 font-mono text-[9px] uppercase tracking-[0.14em]" style={{ color: "var(--text-muted)" }}>
+                    Accuracy
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         </header>
@@ -323,7 +374,7 @@ export default function AlertsPage() {
                       <CheckCircle2 size={13} /> Resolve
                     </button>
                   )}
-                  <button onClick={() => setSelectedAlert(alert)} className="btn btn-secondary h-8 cursor-pointer px-3 text-xs">
+                  <button onClick={() => openDetails(alert)} className="btn btn-secondary h-8 cursor-pointer px-3 text-xs">
                     <Info size={13} /> Details
                   </button>
                   <button
@@ -409,26 +460,20 @@ export default function AlertsPage() {
                   <Sparkles size={13} style={{ color: "var(--accent-ai-bright)" }} /> AI Analysis
                 </div>
                 <div
-                  className="rounded-xl border p-4 text-sm leading-relaxed"
+                  className="whitespace-pre-line rounded-xl border p-4 text-sm leading-relaxed"
                   style={{
                     borderColor: "rgba(139,92,246,0.18)",
                     background: "linear-gradient(180deg, rgba(139,92,246,0.07), rgba(139,92,246,0.02))",
                     color: "var(--text-secondary)",
                   }}
                 >
-                  This alert was triggered by the automated monitoring system based on the severity and specific rules configured for{" "}
-                  <code
-                    className="rounded px-1 font-mono text-[12px]"
-                    style={{ color: "var(--accent-ai-bright)", background: "var(--accent-ai-bg)" }}
-                  >
-                    {selectedAlert.process_name}
-                  </code>
-                  .
-                  <br />
-                  <br />
-                  <strong style={{ color: "var(--text-primary)" }}>Recommendation:</strong> Investigate the root cause immediately to
-                  ensure quality standards are met. If this is a recurring issue, consider adjusting the process control limits or
-                  retraining operators.
+                  {analysisLoading ? (
+                    <span className="inline-flex items-center gap-2" style={{ color: "var(--text-muted)" }}>
+                      <Loader2 size={14} className="animate-spin" /> Analyzing this alert…
+                    </span>
+                  ) : (
+                    analysis ?? "Analysis unavailable right now — try again in a moment."
+                  )}
                 </div>
               </div>
             </div>

@@ -37,7 +37,7 @@ def main() -> None:
     encoded_pw = urllib.parse.quote(password, safe="")
 
     lines = [
-        "# Arad Quality Agent — single source of truth (repo root only)",
+        "# Quality AI Agent — single source of truth (repo root only)",
         "# Copy from .env.example for fresh installs; never commit this file.",
         "",
         f"ENVIRONMENT={src.get('ENVIRONMENT', 'development')}",

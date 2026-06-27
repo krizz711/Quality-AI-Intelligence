@@ -1,7 +1,7 @@
 {
-  "name": "arad-quality-intelligence",
+  "name": "quality-ai-intelligence",
   "version": "1.0.0",
-  "description": "Arad Quality Intelligence — QC & GR&R Analysis Dashboard",
+  "description": "Quality AI Intelligence — QC & GR&R Analysis Dashboard",
   "scripts": {
     "dev": "npm --prefix dashboard run dev",
     "build": "npm --prefix dashboard run build",

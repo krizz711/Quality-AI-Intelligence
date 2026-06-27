@@ -9,7 +9,14 @@ __pycache__
 .coverage
 htmlcov
 .env
+adk_agent/.env
 mlflow-artifacts
 dashboard/.next
 dashboard/node_modules
 dashboard/*.log
+# keep the build context lean (and out of every image layer)
+.venv-adk
+.cache
+logs
+demo-video
+*.db

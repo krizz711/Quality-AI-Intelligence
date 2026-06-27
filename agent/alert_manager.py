@@ -30,6 +30,7 @@ import httpx
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 from core.config import settings
+from core import settings_store
 import os
 from agent import alerts as alerts_mod
 from sqlalchemy import select
@@ -184,8 +185,32 @@ class AlertManager:
                 continue
             any_match = True
             for channel in (rule.channels or []):
-                matched.add(str(channel))
+                ch = str(channel).strip().lower()
+                if ch:
+                    matched.add(ch)
         return matched if any_match else None
+
+    async def _resolve_jira_runtime_config(self) -> tuple[str, str, str, str]:
+        """Resolve Jira config from live settings/env, with DB fallback for stale runtime state."""
+        jira_url = (settings.jira_url or os.environ.get("JIRA_URL") or "").strip()
+        jira_token = (settings.jira_api_token or os.environ.get("JIRA_API_TOKEN") or "").strip()
+        jira_email = (settings.jira_email or os.environ.get("JIRA_EMAIL") or "").strip()
+        jira_project = (settings.jira_project_key or os.environ.get("JIRA_PROJECT_KEY") or "").strip()
+
+        if jira_url and jira_token and jira_email and jira_project:
+            return jira_url, jira_token, jira_email, jira_project
+
+        try:
+            cfg = await settings_store.get_decrypted()
+        except Exception:
+            logger.debug("Could not read persisted Jira settings fallback", exc_info=True)
+            return jira_url, jira_token, jira_email, jira_project
+
+        jira_url = jira_url or (cfg.get("jira.url") or "").strip()
+        jira_token = jira_token or (cfg.get("jira.api_token") or "").strip()
+        jira_email = jira_email or (cfg.get("jira.email") or "").strip()
+        jira_project = jira_project or (cfg.get("jira.project_key") or "").strip()
+        return jira_url, jira_token, jira_email, jira_project
 
     # ── Main dispatch ────────────────────────────────────────────────────
 
@@ -218,6 +243,8 @@ class AlertManager:
 
             # Routing rules decide which configured channels fire (None = all).
             allowed = await self._allowed_channels(ev)
+            if allowed is not None:
+                allowed = {str(ch).strip().lower() for ch in allowed if str(ch).strip()}
 
             try:
                 await redis.set(dedupe_key, str(alert.id), ex=self.DEDUPE_TTL)
@@ -401,10 +428,7 @@ class AlertManager:
                 coros.append(_do_sms())
 
             # ── Jira: GRR >30% or persistent SPC violations (>3 consecutive) ──
-            jira_url = settings.jira_url or os.environ.get("JIRA_URL")
-            jira_token = settings.jira_api_token or os.environ.get("JIRA_API_TOKEN")
-            jira_email = settings.jira_email or os.environ.get("JIRA_EMAIL")
-            jira_project = settings.jira_project_key or os.environ.get("JIRA_PROJECT_KEY")
+            jira_url, jira_token, jira_email, jira_project = await self._resolve_jira_runtime_config()
 
             should_create_jira = False
             if jira_url and jira_token and jira_email and jira_project:
@@ -452,7 +476,47 @@ class AlertManager:
                                     {"ticket": ticket, "has_llm_summary": bool(llm_text)},
                                 )
                                 await task_session.commit()
+                        else:
+                            async with AsyncSessionLocal() as task_session:
+                                task_session.add(
+                                    NotificationDelivery(
+                                        alert_id=alert.id,
+                                        channel="jira",
+                                        status="failed",
+                                        error_message="create_jira_ticket returned no ticket key",
+                                    )
+                                )
+                                await self._record_audit(
+                                    task_session,
+                                    "system",
+                                    "alert_dispatch_failed",
+                                    "alert",
+                                    str(alert.id),
+                                    {"channel": "jira", "error": "create_jira_ticket returned no ticket key"},
+                                )
+                                await task_session.commit()
                     except Exception:
+                        try:
+                            async with AsyncSessionLocal() as task_session:
+                                task_session.add(
+                                    NotificationDelivery(
+                                        alert_id=alert.id,
+                                        channel="jira",
+                                        status="failed",
+                                        error_message="exception during Jira create",
+                                    )
+                                )
+                                await self._record_audit(
+                                    task_session,
+                                    "system",
+                                    "alert_dispatch_failed",
+                                    "alert",
+                                    str(alert.id),
+                                    {"channel": "jira", "error": "exception during Jira create"},
+                                )
+                                await task_session.commit()
+                        except Exception:
+                            logger.exception("Failed recording Jira failure for alert %s", alert.id)
                         logger.exception("Failed to create JIRA for alert %s", alert.id)
 
                 coros.append(_do_jira())

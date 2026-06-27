@@ -74,6 +74,28 @@ def get_series(process_name: str, timeout: float = 8.0) -> list[float]:
     return [float(p["value"]) for p in reversed(points) if p.get("value") is not None]
 
 
+def get_baseline(process_name: str, timeout: float = 5.0) -> Optional[dict]:
+    """Fetch a process's frozen SPC baseline (UCL/CL/LCL/sigma) from the platform.
+
+    Returns the baseline dict when one is configured, else None — so callers fall back
+    to limits computed from the current window. Lets the agent judge a process against
+    the SAME frozen limits the SPC monitor and autonomous monitor use.
+    """
+    from urllib.parse import quote
+
+    try:
+        r = requests.get(
+            f"{_base()}/api/v1/spc/baseline/{quote(process_name)}",
+            headers=_headers(), timeout=timeout,
+        )
+        if r.status_code == 200:
+            data = r.json()
+            return data if data.get("configured") else None
+    except requests.RequestException as exc:
+        logger.info("baseline fetch failed for %s (%s)", process_name, exc)
+    return None
+
+
 def trigger_platform_alert(
     message: str,
     severity: str,

@@ -1,6 +1,6 @@
 <div align="center">
 
-# Arad Quality Intelligence
+# Quality AI Intelligence
 
 ### An autonomous, multi‑agent quality‑control system for manufacturing — GR&R, SPC, and 24/7 alerting, done in seconds instead of days.
 
@@ -52,7 +52,7 @@ is sent**. The run is saved to the agent's persistent memory (inspect with
 
 ## Table of contents
 
-1. [What is Arad Quality Intelligence?](#what-is-arad-quality-intelligence)
+1. [What is Quality AI Intelligence?](#what-is-quality-ai-intelligence)
 2. [The problem — quality work that eats days](#the-problem--quality-work-that-eats-days)
 3. [The solution — an agent that never sleeps](#the-solution--an-agent-that-never-sleeps)
 4. [The AI agent layer (Google ADK)](#the-ai-agent-layer-google-adk)
@@ -76,9 +76,9 @@ is sent**. The run is saved to the agent's persistent memory (inspect with
 
 ---
 
-## What is Arad Quality Intelligence?
+## What is Quality AI Intelligence?
 
-**Arad Quality Intelligence** is a self‑hosted platform that automates the daily statistical
+**Quality AI Intelligence** is a self‑hosted platform that automates the daily statistical
 work of a manufacturing quality engineer, with a **Google ADK multi‑agent system** on top
 that turns raw measurements into a priced, human‑approved action:
 
@@ -310,7 +310,7 @@ in‑process. The **ADK agent service** runs alongside it and reads the API's li
 
 <p align="center">
   <img src="docs/assets/architecture.svg" width="100%"
-       alt="Arad Quality Intelligence system architecture — data ingress (Apache Kafka, CSV/Excel, MES/QMS pull, REST push) flows into the FastAPI service (GR&R engine, SPC engine, autonomous monitor, and an AI summary router for Gemini/Claude/OpenAI), persists to TimescaleDB and Redis, fans out alerts to Slack/Email/Twilio/JIRA, with a Next.js dashboard and Prometheus/Grafana/MLflow observability — all orchestrated by Docker Compose.">
+       alt="Quality AI Intelligence system architecture — data ingress (Apache Kafka, CSV/Excel, MES/QMS pull, REST push) flows into the FastAPI service (GR&R engine, SPC engine, autonomous monitor, and an AI summary router for Gemini/Claude/OpenAI), persists to TimescaleDB and Redis, fans out alerts to Slack/Email/Twilio/JIRA, with a Next.js dashboard and Prometheus/Grafana/MLflow observability — all orchestrated by Docker Compose.">
 </p>
 
 | Component | Package | Responsibility |
@@ -696,7 +696,7 @@ Quality-Control-GR-R-Analysis-Agent/
 
 <div align="center">
 
-**Arad Quality Intelligence** — detect, price, explain, and notify, in seconds instead of days.
+**Quality AI Intelligence** — detect, price, explain, and notify, in seconds instead of days.
 
 <sub>Self‑hosted · AIAG‑compliant · multi‑agent (ADK) · human‑in‑the‑loop · always‑on · MIT‑licensed</sub>
 

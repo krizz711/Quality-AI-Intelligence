@@ -2,7 +2,7 @@
 name = "arad-quality-agent"
 version = "0.1.0"
 description = "Manufacturing quality control agent with GR&R analysis, SPC charting, and intelligent alerting"
-authors = ["Arad Quality Team"]
+authors = ["Quality AI Team"]
 readme = "README.md"
 packages = [
     { include = "agent" },

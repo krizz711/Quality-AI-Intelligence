@@ -1,5 +1,5 @@
 """
-Generate the Arad Quality Intelligence — Setup & User Guide (PDF).
+Generate the Quality AI Intelligence — Setup & User Guide (PDF).
 
 A branded, quality-engineer-friendly hand-off document covering the full journey:
 install -> first sign-in -> connect tools (API keys) -> bring in data -> test.
@@ -202,7 +202,7 @@ def draw_cover(canvas, doc):
 
     canvas.setFillColor(white)
     canvas.setFont("Helvetica-Bold", 31)
-    canvas.drawString(x, PAGE_H - 188, "Arad Quality Intelligence")
+    canvas.drawString(x, PAGE_H - 188, "Quality AI Intelligence")
     canvas.setFillColor(ACCENT_LT)
     canvas.setFont("Helvetica", 18)
     canvas.drawString(x, PAGE_H - 216, "Setup & User Guide")
@@ -253,7 +253,7 @@ def draw_footer(canvas, doc):
     canvas.line(LMARGIN, BMARGIN - 6, PAGE_W - RMARGIN, BMARGIN - 6)
     canvas.setFillColor(MUTED)
     canvas.setFont("Helvetica", 8)
-    canvas.drawString(LMARGIN, BMARGIN - 16, "Arad Quality Intelligence — Setup & User Guide")
+    canvas.drawString(LMARGIN, BMARGIN - 16, "Quality AI Intelligence — Setup & User Guide")
     canvas.setFillColor(ACCENT_DK)
     canvas.setFont("Helvetica-Bold", 8)
     canvas.drawRightString(PAGE_W - RMARGIN, BMARGIN - 16, f"Page {doc.page - 1}")
@@ -268,7 +268,7 @@ def build():
     doc = BaseDocTemplate(
         out, pagesize=A4,
         leftMargin=LMARGIN, rightMargin=RMARGIN, topMargin=TMARGIN, bottomMargin=BMARGIN,
-        title="Arad Quality Intelligence — Setup & User Guide",
+        title="Quality AI Intelligence — Setup & User Guide",
         author="Arad Group", subject="Installation, setup and user guide",
     )
     frame = Frame(LMARGIN, BMARGIN, CONTENT_W, PAGE_H - TMARGIN - BMARGIN, id="body")
@@ -286,7 +286,7 @@ def build():
     s.append(Paragraph("What's inside", S_H1))
     s.append(Spacer(1, 4))
     toc = [
-        "1   What is Arad Quality?",
+        "1   What is Quality AI Intelligence?",
         "2   Before you start — what you'll need",
         "3   Part 1 · Install the app  (one-time, technical)",
         "4   Part 2 · First sign-in & the welcome tour",
@@ -304,10 +304,10 @@ def build():
         "New here? Read in order. If the platform is already installed and you can open it "
         "in a browser, jump to <b>Part 2</b>."))
 
-    # ---- 1. What is Arad Quality ----
-    s.append(h1("1", "What is Arad Quality?"))
+    # ---- 1. What is Quality AI Intelligence ----
+    s.append(h1("1", "What is Quality AI Intelligence?"))
     s.append(para(
-        "Arad Quality Intelligence is an <b>autonomous quality-control platform</b>. It continuously "
+        "Quality AI Intelligence is an <b>autonomous quality-control platform</b>. It continuously "
         "watches your measurement data, runs Statistical Process Control (SPC) and Gage R&amp;R (GR&amp;R) "
         "analysis, raises an alert the moment a process drifts out of control, and explains what's "
         "happening in plain language with an AI copilot. You drive everything from one web dashboard.",

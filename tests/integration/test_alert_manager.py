@@ -343,6 +343,60 @@ async def test_jira_not_created_for_warning(monkeypatch, fake_redis):
 
 
 @pytest.mark.asyncio
+async def test_jira_uses_persisted_settings_and_mixed_case_channel(monkeypatch, fake_redis):
+    _bind_alerting_settings(monkeypatch, enable_slack=False, enable_jira=False)
+    _mock_llm_explanation(monkeypatch, "")
+
+    import agent.alert_manager as am_mod
+
+    async def fake_allowed(self, ev):
+        return {"JIRA"}
+
+    async def fake_decrypted():
+        return {
+            "jira.url": "http://jira.example",
+            "jira.email": "bot@example.com",
+            "jira.api_token": "token",
+            "jira.project_key": "QUAL",
+        }
+
+    jira_calls = []
+
+    async def fake_create_jira_ticket(*args, **kwargs):
+        jira_calls.append(kwargs)
+        return "QUAL-77"
+
+    monkeypatch.setattr(am_mod.AlertManager, "_allowed_channels", fake_allowed)
+    monkeypatch.setattr(am_mod.settings_store, "get_decrypted", fake_decrypted)
+    monkeypatch.setattr("agent.alerts.create_jira_ticket", fake_create_jira_ticket)
+
+    manager = AlertManager(redis_client=fake_redis, dedupe_ttl=900)
+    ev = AlertEvent(
+        type="grr_fail",
+        severity="critical",
+        message="persisted jira config",
+        process_name="press-line-1",
+        grr_pct=35.0,
+    )
+    alert_id = await manager.send(ev)
+
+    assert alert_id is not None
+    assert len(jira_calls) == 1
+    assert jira_calls[0]["summary"].startswith("Quality Alert:")
+    conn = await _db()
+    try:
+        jira_delivery = await conn.fetchrow(
+            "SELECT channel, status, response_reference FROM notification_deliveries WHERE alert_id = $1 AND channel = 'jira'",
+            str(alert_id),
+        )
+        assert jira_delivery["channel"] == "jira"
+        assert jira_delivery["status"] == "created"
+        assert jira_delivery["response_reference"] == "QUAL-77"
+    finally:
+        await conn.close()
+
+
+@pytest.mark.asyncio
 async def test_qms_integration_posts_results_and_logs_delivery(monkeypatch, fake_redis):
     _bind_alerting_settings(monkeypatch, enable_slack=False, enable_qms=True)
     _mock_llm_explanation(monkeypatch, "")

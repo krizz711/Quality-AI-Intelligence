@@ -149,16 +149,16 @@ export function GRRPdfReport({
   return (
     <Document
       title={`GR&R Report – ${processName}`}
-      author="Arad Quality Intelligence"
+      author="Quality AI Intelligence"
       subject="Gauge Repeatability & Reproducibility Analysis"
-      creator="Arad Quality Intelligence Platform"
+      creator="Quality AI Intelligence Platform"
     >
       <Page size="A4" style={s.page}>
         <View style={s.accentBar} />
 
         <View style={s.headerRow}>
           <View>
-            <Text style={s.brandName}>ARAD</Text>
+            <Text style={s.brandName}>QUALITY AI</Text>
             <Text style={s.brandSub}>QUALITY INTELLIGENCE PLATFORM</Text>
           </View>
           <View>
@@ -223,7 +223,7 @@ export function GRRPdfReport({
         </View>
 
         <View style={s.footer}>
-          <Text style={s.footerText}>Arad Group — Quality Intelligence Platform</Text>
+          <Text style={s.footerText}>Quality AI Intelligence — Quality Intelligence Platform</Text>
           <Text style={s.footerText}>{generatedAt}</Text>
           <Text style={s.footerText}>CONFIDENTIAL</Text>
         </View>

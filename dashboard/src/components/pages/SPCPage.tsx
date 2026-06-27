@@ -27,7 +27,7 @@ import {
   type SPCProcessSummary,
   type SPCViolation,
 } from "@/api/apiClient";
-import { useRealtimeStream } from "@/api/realtime";
+import { POLL_EVENT_TYPE, useRealtimeStream } from "@/api/realtime";
 
 type ChartPoint = {
   index: number;
@@ -264,14 +264,23 @@ export default function SPCPage() {
 
   useRealtimeStream({
     enabled: Boolean(processName),
+    // The dashboard reaches the backend through a same-origin proxy that can't carry a
+    // WebSocket, so realtime runs on the polling fallback. Poll quickly and refresh on
+    // each tick so a live measurement feed (MES / upload) fills the chart in near-real-time.
+    pollMs: 2000,
     onEvent: (event) => {
       const eventType = String(event.type || "");
       if (!processName) {
         return;
       }
 
-      // poll.tick is intentionally ignored here: reloading history mid-entry
-      // would replace the operator's in-progress measurement window.
+      // Refresh on each poll tick to pick up streamed measurements — but skip while the
+      // operator is mid-entry so we never wipe an in-progress manual value.
+      if (eventType === POLL_EVENT_TYPE) {
+        if (!measurementDraft) void loadHistory();
+        return;
+      }
+
       const eventProcess = String(event.process_name || event.characteristic_name || event.equipment_id || "");
       if (!eventProcess) {
         return;

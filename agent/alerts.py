@@ -127,7 +127,7 @@ def _build_block_kit_payload(
     blocks.append({
         "type": "context",
         "elements": [
-            {"type": "mrkdwn", "text": f"Arad Quality Agent • {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}"},
+            {"type": "mrkdwn", "text": f"Quality AI Agent • {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}"},
         ],
     })
 
@@ -194,39 +194,50 @@ async def create_jira_ticket(
 
     url = f"{jira_url.rstrip('/')}/rest/api/3/issue"
     auth = httpx.BasicAuth(email, api_token)
-    payload = {
-        "fields": {
-            "project": {"key": project_key},
-            "summary": summary,
-            "description": {
-                "type": "doc",
-                "version": 1,
-                "content": [
-                    {
-                        "type": "paragraph",
-                        "content": [{"type": "text", "text": description}],
-                    }
-                ],
-            },
-            "issuetype": {"name": "Bug"},
-        }
+    base_fields = {
+        "project": {"key": project_key},
+        "summary": summary,
+        "description": {
+            "type": "doc",
+            "version": 1,
+            "content": [
+                {
+                    "type": "paragraph",
+                    "content": [{"type": "text", "text": description}],
+                }
+            ],
+        },
     }
+
+    # Different Jira projects expose different issue types; try common options.
+    issue_types = ("Bug", "Task", "Story")
+    last_error: str | None = None
 
     try:
         async with httpx.AsyncClient(timeout=15.0) as client:
-            response = await client.post(
-                url,
-                json=payload,
-                auth=auth,
-                headers={"Content-Type": "application/json"},
-            )
-            response.raise_for_status()
-            ticket_key = response.json()["key"]
-        logger.info("JIRA ticket created: %s", ticket_key)
-        return ticket_key
+            for issue_type in issue_types:
+                payload = {"fields": {**base_fields, "issuetype": {"name": issue_type}}}
+                response = await client.post(
+                    url,
+                    json=payload,
+                    auth=auth,
+                    headers={"Content-Type": "application/json"},
+                )
+                if response.status_code < 400:
+                    ticket_key = response.json().get("key")
+                    if ticket_key:
+                        logger.info("JIRA ticket created: %s (issue_type=%s)", ticket_key, issue_type)
+                        return ticket_key
+                    last_error = f"missing key in Jira response (issue_type={issue_type})"
+                    continue
+                body_preview = response.text[:300]
+                last_error = f"HTTP {response.status_code} (issue_type={issue_type}): {body_preview}"
+                logger.warning("JIRA create attempt failed: %s", last_error)
     except (httpx.HTTPError, Exception) as exc:
-        logger.error("Failed to create JIRA ticket: %s", exc)
-        return None
+        last_error = str(exc)
+
+    logger.error("Failed to create JIRA ticket: %s", last_error or "unknown error")
+    return None
 
 
 # ─── Email (aiosmtplib + Jinja2) ────────────────────────────────────────────

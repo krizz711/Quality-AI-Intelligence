@@ -1,6 +1,6 @@
-# Arad Quality Agent — Operational Runbook
+# Quality AI Agent — Operational Runbook
 
-> **Purpose**: Step-by-step procedures for operating, troubleshooting, and recovering the Arad Quality Agent production system. Every section should be tested by a team member who did not write it before go-live.
+> **Purpose**: Step-by-step procedures for operating, troubleshooting, and recovering the Quality AI Agent production system. Every section should be tested by a team member who did not write it before go-live.
 
 ---
 

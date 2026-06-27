@@ -111,7 +111,7 @@ export default function CommandBar() {
         {/* Breadcrumb */}
         <div className="flex min-w-0 items-center gap-2 text-sm">
           <span className="font-mono text-[11px] uppercase tracking-[0.16em]" style={{ color: "var(--text-ghost)" }}>
-            Arad
+            Quality AI
           </span>
           <ChevronRight size={13} style={{ color: "var(--text-ghost)" }} />
           <span
@@ -226,7 +226,7 @@ export default function CommandBar() {
             color: "#fff",
             boxShadow: "0 0 0 2px var(--bg-root), 0 0 0 3.5px rgba(139,92,246,0.45), 0 2px 12px -2px rgba(139,92,246,0.6)",
           }}
-          title="Quality Engineer — Arad Group"
+          title="Quality Engineer — Quality AI Intelligence"
         >
           QE
         </div>

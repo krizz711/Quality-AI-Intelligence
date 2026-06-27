@@ -133,7 +133,7 @@ export default function WelcomeGuide() {
                 </span>
                 <div>
                   <h2 className="text-lg font-semibold" style={{ color: "var(--text-primary)" }}>
-                    Welcome to Arad Quality
+                    Welcome to Quality AI Intelligence
                   </h2>
                   <p className="mt-0.5 text-sm" style={{ color: "var(--text-secondary)" }}>
                     Your quality command center — built for engineers, not coders. Here's the whole app in four steps.

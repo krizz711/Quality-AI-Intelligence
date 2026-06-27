@@ -1,5 +1,5 @@
 """
-Idempotent first-run bootstrap for the Arad Quality Agent.
+Idempotent first-run bootstrap for the Quality AI Agent.
 
 Runs automatically from the Docker API entrypoint (after Alembic migrations) and
 can also be run by hand:

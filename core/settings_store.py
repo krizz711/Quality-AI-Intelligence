@@ -311,7 +311,7 @@ async def test_channel(channel: str) -> tuple[bool, str]:
             async with httpx.AsyncClient(timeout=10.0) as client:
                 r = await client.post(
                     url,
-                    json={"text": "✅ Arad Quality — Slack integration test. You're connected."},
+                    json={"text": "✅ Quality AI — Slack integration test. You're connected."},
                 )
             ok = r.status_code < 400
             return (
@@ -346,8 +346,8 @@ async def test_channel(channel: str) -> tuple[bool, str]:
                 message = (
                     f"From: {from_addr}\r\n"
                     f"To: {', '.join(recipients)}\r\n"
-                    "Subject: Arad Quality - email integration test\r\n\r\n"
-                    "This is a test from Arad Quality Intelligence. "
+                    "Subject: Quality AI - email integration test\r\n\r\n"
+                    "This is a test from Quality AI Intelligence. "
                     "Your email alerts are configured correctly."
                 )
                 await smtp.sendmail(from_addr, recipients, message)

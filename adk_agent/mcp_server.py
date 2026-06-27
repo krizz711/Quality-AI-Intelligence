@@ -1,4 +1,4 @@
-"""Arad Quality MCP server — exposes the quality skills over the Model Context Protocol.
+"""Quality AI MCP server — exposes the quality skills over the Model Context Protocol.
 
 Run standalone (stdio):  python -m adk_agent.mcp_server
 Lets any MCP client (the Arad ADK agents, Claude Desktop, another team's agent) reuse

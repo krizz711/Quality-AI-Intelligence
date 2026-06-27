@@ -1,4 +1,4 @@
-# Arad Quality Agent — Testing Strategy
+# Quality AI Agent — Testing Strategy
 
 ## Overview
 

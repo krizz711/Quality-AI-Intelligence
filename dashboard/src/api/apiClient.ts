@@ -131,6 +131,12 @@ export interface AlertListResponse {
 export interface AlertResolveResponse {
   alert_id: string;
   resolved_at: string;
+  violations_acknowledged?: number;
+}
+
+export interface AlertAnalysisResponse {
+  alert_id: string;
+  analysis: string;
 }
 
 export interface AlertFeedbackInput {
@@ -485,6 +491,9 @@ export const getAlerts = (params?: AlertFilters) =>
 
 export const resolveAlert = (id: string | number) =>
   apiClient.put<AlertResolveResponse>(`/api/v1/alerts/${id}/resolve`);
+
+export const getAlertAnalysis = (id: string | number) =>
+  apiClient.get<AlertAnalysisResponse>(`/api/v1/alerts/${id}/analysis`);
 
 export const recordAlertFeedback = (id: string | number, data: AlertFeedbackInput) =>
   apiClient.post<AlertFeedbackResponse>(`/api/v1/alerts/${id}/feedback`, data);

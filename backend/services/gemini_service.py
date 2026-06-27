@@ -340,6 +340,57 @@ async def analyzeSPCAnomaly(chart_data: dict[str, Any]) -> str:
     return await analyze_spc_anomaly(chart_data)
 
 
+def _alert_fallback_summary(alert: dict[str, Any]) -> str:
+    """Deterministic alert explanation used when the AI provider is unavailable."""
+    atype = (alert.get("type") or "alert").lower()
+    sev = (alert.get("severity") or "").lower()
+    proc = alert.get("process_name") or "the process"
+    lines = ["**Automated review** (AI commentary temporarily unavailable)", ""]
+    if atype == "spc_violation":
+        lines.append(
+            f"An SPC control-rule violation fired on {proc}. Treat the flagged point(s) as "
+            "potential special-cause variation: quarantine recent output, then check tooling, "
+            "fixturing, material lot, and any setup change near the event."
+        )
+    elif atype == "grr_fail":
+        lines.append(
+            f"A measurement-system (GR&R) check failed for {proc}. The gauge may contribute too "
+            "much variation — review calibration, resolution, fixturing, and operator technique "
+            "before using it for product acceptance."
+        )
+    else:
+        lines.append(
+            f"A {atype.replace('_', ' ')} alert fired on {proc}. Review recent measurements and "
+            "process inputs (tooling, material, setup) for an assignable cause."
+        )
+    if sev in ("critical", "high"):
+        lines.append("Severity is elevated — investigate now and document the disposition.")
+    return "\n\n".join(lines)
+
+
+async def analyze_alert(alert: dict[str, Any]) -> str:
+    """Plain-English root-cause + corrective action for a single quality alert.
+
+    Routes through the configured provider (Gemini/Claude/OpenAI) and degrades to a
+    deterministic summary if no key is set or the model is unreachable.
+    """
+    prompt = _build_prompt(
+        "quality alert analysis",
+        alert,
+        """
+You are advising a manufacturing quality engineer about ONE alert that just fired.
+Using only the alert details (and any recent measurements provided), respond in 3-5
+sentences covering: (1) what the alert most likely indicates, (2) the single most
+probable root cause, and (3) one specific corrective action to take now.
+No preamble, no markdown headings.
+""".strip(),
+    )
+    try:
+        return await _generate_text(prompt)
+    except AIGenerationError:
+        return _alert_fallback_summary(alert)
+
+
 async def generate_quality_report(all_data: dict[str, Any]) -> str:
     """Generate a combined quality report and return Gemini output text."""
 

@@ -1,4 +1,4 @@
-"""The Arad Quality multi-agent system (Google ADK), wired to the real engine.
+"""The Quality AI multi-agent system (Google ADK), wired to the real engine.
 
     quality_coordinator (root)
     ├── measurement_analyst   — GR&R / MSA          (grr.*)
@@ -76,7 +76,7 @@ def build_root_agent(model=None) -> Agent:
         model=model,
         description="SPC control charts, Nelson-rule violation detection, and breach forecasting.",
         instruction=prompts.PROCESS_MONITOR_INSTRUCTION,
-        tools=_tools(skills.analyze_spc_series, skills.forecast_breach, skills.generate_sample_series),
+        tools=_tools(skills.analyze_process, skills.analyze_spc_series, skills.forecast_breach, skills.generate_sample_series),
         output_key="last_spc_scan",
     )
 
@@ -100,7 +100,7 @@ def build_root_agent(model=None) -> Agent:
     return Agent(
         name="quality_coordinator",
         model=model,
-        description="Coordinates Arad's quality specialists and answers plant-manager questions.",
+        description="Coordinates Quality AI's specialists and answers plant-manager questions.",
         instruction=prompts.COORDINATOR_INSTRUCTION,
         sub_agents=[measurement_analyst, process_monitor, business_analyst, action_dispatch],
         before_model_callback=block_unsafe_input,

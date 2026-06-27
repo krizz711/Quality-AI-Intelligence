@@ -1,4 +1,4 @@
-# Test Guide — Arad Quality Intelligence (full integrated system)
+# Test Guide — Quality AI Intelligence (full integrated system)
 
 A step-by-step checklist to verify **every integration, every UI page, and the AI
 Agent** work together as one system. Tick each box as you go.

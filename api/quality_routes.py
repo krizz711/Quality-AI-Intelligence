@@ -36,7 +36,8 @@ from spc.baseline import Baseline, compute_baseline
 class AlertResolveResponse(BaseModel):
     alert_id: str
     resolved_at: datetime
-    
+    violations_acknowledged: int = 0  # linked SPC violations cleared by this resolution
+
 def _now() -> datetime:
     return datetime.now(timezone.utc).replace(tzinfo=None)
 
@@ -1913,6 +1914,7 @@ async def resolve_alert(alert_id: str, _user=Depends(require_role("admin"))) -> 
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Alert not found")
 
         stored_id = str(row["id"])
+        resolved_by = _user.get("username") if isinstance(_user, dict) else "api"
 
         await session.execute(
             text(
@@ -1922,19 +1924,94 @@ async def resolve_alert(alert_id: str, _user=Depends(require_role("admin"))) -> 
                 WHERE id = :id
                 """
             ),
-            {"resolved_at": resolved_at, "resolved_by": "api", "id": stored_id},
+            {"resolved_at": resolved_at, "resolved_by": resolved_by, "id": stored_id},
         )
+
+        # Connect the resolution to the violation it came from: for SPC alerts, mark the
+        # process's open QualityViolation rows acknowledged. This is what actually clears
+        # them from the monitor's dedup window and the AI agent's "open violations"
+        # context — otherwise resolving an alert left the underlying violation dangling.
+        violations_acknowledged = 0
+        if row["type"] == "spc_violation" and row["process_name"]:
+            ack_result = await session.execute(
+                text(
+                    """
+                    UPDATE quality_violations
+                    SET acknowledged_by = :who
+                    WHERE (part_number = :proc OR characteristic_name = :proc)
+                      AND acknowledged_by IS NULL
+                    """
+                ),
+                {"who": resolved_by, "proc": row["process_name"]},
+            )
+            violations_acknowledged = ack_result.rowcount or 0
+
         await _audit(
             session,
             actor="system",
             action="alert_resolved",
             entity_type="alert",
             entity_id=stored_id,
-            details={"status": "resolved"},
+            details={"status": "resolved", "violations_acknowledged": violations_acknowledged},
         )
         await session.commit()
 
-    return AlertResolveResponse(alert_id=alert_id, resolved_at=resolved_at)
+    return AlertResolveResponse(
+        alert_id=alert_id,
+        resolved_at=resolved_at,
+        violations_acknowledged=violations_acknowledged,
+    )
+
+
+class AlertAnalysisResponse(BaseModel):
+    alert_id: str
+    analysis: str
+
+
+@router.get("/alerts/{alert_id}/analysis", response_model=AlertAnalysisResponse)
+async def get_alert_analysis(alert_id: str) -> AlertAnalysisResponse:
+    """Real, provider-aware LLM analysis of a single alert (root cause + action).
+
+    Pulls the alert plus recent measurements for its process as context, then routes
+    through the configured AI provider; degrades to a deterministic summary if no key
+    is set or the model is unreachable.
+    """
+    uuid_id, hex_id = _stored_alert_lookup_values(alert_id)
+    async with AsyncSessionLocal() as session:
+        row = (
+            await session.execute(
+                text("SELECT * FROM alerts WHERE id IN (:uuid_id, :hex_id)"),
+                {"uuid_id": uuid_id, "hex_id": hex_id},
+            )
+        ).mappings().first()
+        if not row:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Alert not found")
+
+        alert_ctx: dict[str, Any] = {
+            "type": row["type"],
+            "severity": row["severity"],
+            "process_name": row["process_name"],
+            "message": row["message"],
+        }
+        recent = (
+            await session.execute(
+                text(
+                    """
+                    SELECT measured_value
+                    FROM measurements
+                    WHERE equipment_id = :p OR characteristic_name = :p
+                    ORDER BY timestamp DESC
+                    LIMIT 20
+                    """
+                ),
+                {"p": row["process_name"]},
+            )
+        ).mappings().all()
+        if recent:
+            alert_ctx["recent_values"] = [float(r["measured_value"]) for r in reversed(recent)]
+
+    analysis = await geminiService.analyze_alert(alert_ctx)
+    return AlertAnalysisResponse(alert_id=alert_id, analysis=analysis)
 
 
 @router.post("/alerts/{alert_id}/feedback", response_model=AlertFeedbackResponse, status_code=status.HTTP_201_CREATED)

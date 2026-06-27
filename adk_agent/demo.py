@@ -81,7 +81,7 @@ async def _persist(scan: dict, copq: dict, action: str) -> str:
 
 
 def run_demo(*, send: bool = False, pause: float = 0.8) -> int:
-    print(f"\n{BOLD}Arad Quality Intelligence — autonomous agent loop{RST}")
+    print(f"\n{BOLD}Quality AI Intelligence — autonomous agent loop{RST}")
     print("Offline demo · real GR&R/SPC/COPQ engine · no API key required")
 
     # 1. A live process drifts out of control.

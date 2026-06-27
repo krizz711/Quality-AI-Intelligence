@@ -3,7 +3,7 @@ import { Toaster } from "sonner";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Arad Quality Intelligence Platform",
+  title: "Quality AI Intelligence Platform",
   description: "AI-native manufacturing quality control — GR&R analysis, SPC monitoring, predictive analytics, and intelligent alerting for industrial quality teams.",
   keywords: ["quality control", "GR&R", "SPC", "manufacturing", "AI", "statistical process control"],
 };

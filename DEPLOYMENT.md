@@ -1,4 +1,4 @@
-# Arad Quality Agent — Deployment Guide
+# Quality AI Agent — Deployment Guide
 
 This guide takes you from a fresh machine to a running, production-grade deployment
 of the Quality Control & GR&R Analysis Agent. It covers the full Docker Compose

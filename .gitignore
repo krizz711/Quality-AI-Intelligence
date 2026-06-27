@@ -65,8 +65,18 @@ test_out*.txt
 unit_test_log*.txt
 *_log_test.txt
 
-# ─── Demo-video build artifacts (regenerable; keep scripts + final mp4) ──────
-demo-video/output/clip_*.mp4
-demo-video/output/concat_list.txt
-demo-video/screenshots/login_debug.png
+# ─── Claude / AI-assistant artifacts (not part of the product) ───────────────
+.claude/
+CLAUDE.md
+**/CLAUDE.md
+
+# ─── Build / report caches ───────────────────────────────────────────────────
+.cache/
+
+# ─── Design-system export bundle (not imported by the app) ───────────────────
+_ds/
+
+# ─── Demo-video pipeline + raw screen captures (kept local, not in the repo) ──
+demo-video/
+KaggelVID/
 

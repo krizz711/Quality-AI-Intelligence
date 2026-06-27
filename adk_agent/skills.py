@@ -82,13 +82,23 @@ def run_sample_gage_study(quality: str = "acceptable", n_parts: int = 10, n_oper
     return out
 
 
-def analyze_spc_series(values: list[float]) -> dict[str, Any]:
-    """Run SPC (Individuals/MR chart + all 8 Nelson rules) on a measurement series."""
+def analyze_spc_series(values: list[float], *, baseline_cl: float | None = None,
+                       baseline_sigma: float | None = None, baseline_ucl: float | None = None,
+                       baseline_lcl: float | None = None) -> dict[str, Any]:
+    """Run SPC (Individuals/MR chart + all 8 Nelson rules) on a measurement series.
+
+    When frozen baseline limits are supplied (``baseline_*``), the Nelson rules and the
+    reported limits use them (Phase II monitoring) instead of limits recomputed from this
+    window — so a drifting tail can't inflate its own limits and mislabel the points.
+    """
     if not values or len(values) < 2:
         return {"error": "Provide at least 2 measurement values."}
     i_chart, _ = individuals_mr_chart(values)
-    cl, sigma = i_chart.limits.cl, i_chart.limits.sigma
     arr = np.asarray(values, dtype=float)
+    cl = baseline_cl if baseline_cl is not None else i_chart.limits.cl
+    sigma = baseline_sigma if baseline_sigma is not None else i_chart.limits.sigma
+    ucl = baseline_ucl if baseline_ucl is not None else i_chart.limits.ucl
+    lcl = baseline_lcl if baseline_lcl is not None else i_chart.limits.lcl
     rule_hits = evaluate_all_rules(arr, cl, sigma)
 
     violations: list[dict[str, Any]] = []
@@ -104,13 +114,43 @@ def analyze_spc_series(values: list[float]) -> dict[str, Any]:
                f"rules: {', '.join(sorted({v['rule'] for v in violations}))}.")
     return {
         "in_control": in_control,
-        "control_limits": {"ucl": round(i_chart.limits.ucl, 6), "center_line": round(cl, 6),
-                           "lcl": round(i_chart.limits.lcl, 6), "sigma": round(sigma, 6)},
+        "control_limits": {"ucl": round(ucl, 6), "center_line": round(cl, 6),
+                           "lcl": round(lcl, 6), "sigma": round(sigma, 6)},
         "n_points": len(arr),
         "violation_count": len(violations),
         "violations": violations,
         "summary": summary,
     }
+
+
+def analyze_process(process_name: str) -> dict[str, Any]:
+    """Fetch a NAMED process's live measurements from the platform and run SPC on them,
+    judged against that process's frozen baseline when one is set.
+
+    Use this to investigate a real, named process or line (e.g. "Torque Press Line 1").
+    You do NOT need the user to paste data — this retrieves it for you. Returns the same
+    shape as ``analyze_spc_series`` plus ``process_name`` and ``limits_source``.
+    """
+    try:
+        values = backend_client.get_series(process_name)
+    except Exception as exc:  # backend unreachable / unknown process
+        return {"error": f"Could not fetch measurements for '{process_name}': {exc}"}
+    if not values or len(values) < 2:
+        return {"error": f"No measurement data on file for '{process_name}' yet."}
+
+    baseline = backend_client.get_baseline(process_name)
+    if baseline:
+        result = analyze_spc_series(
+            values,
+            baseline_cl=baseline.get("cl"), baseline_sigma=baseline.get("sigma"),
+            baseline_ucl=baseline.get("ucl"), baseline_lcl=baseline.get("lcl"),
+        )
+        result["limits_source"] = "frozen baseline"
+    else:
+        result = analyze_spc_series(values)
+        result["limits_source"] = "computed from recent window"
+    result["process_name"] = process_name
+    return result
 
 
 def forecast_breach(values: list[float], window: int | None = None) -> dict[str, Any]:
@@ -208,5 +248,6 @@ def dispatch_quality_alert(title: str, message: str, severity: str = "warning",
             "sent_to": [k for k, v in results.items() if v.get("ok")], "results": results}
 
 
-ALL_SKILLS = [run_grr_study, run_sample_gage_study, analyze_spc_series, forecast_breach,
-              calculate_copq, generate_sample_study, generate_sample_series, dispatch_quality_alert]
+ALL_SKILLS = [run_grr_study, run_sample_gage_study, analyze_process, analyze_spc_series,
+              forecast_breach, calculate_copq, generate_sample_study, generate_sample_series,
+              dispatch_quality_alert]

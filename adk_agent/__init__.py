@@ -1,4 +1,4 @@
-"""Arad Quality — Google ADK agent layer.
+"""Quality AI — Google ADK agent layer.
 
 A multi-agent system built with Google's Agent Development Kit that sits on top of
 this project's existing, production-validated quality engine (`grr`, `spc`) and its

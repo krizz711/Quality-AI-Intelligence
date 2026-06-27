@@ -80,7 +80,15 @@ def _resolve_series(process_name: str | None, scenario: str) -> tuple[str, list[
 def run_scan(process_name: str | None = None, scenario: str = "shift") -> dict[str, Any]:
     """Autonomous scan of one process: monitor → cost → draft alert (nothing sent)."""
     process, series, data_source = _resolve_series(process_name, scenario)
-    spc = skills.analyze_spc_series(series)
+    # Judge against the process's frozen baseline (the same limits the SPC monitor uses) so a
+    # drifting tail doesn't inflate its own limits and mislabel the in-control points.
+    baseline = backend_client.get_baseline(process)
+    if baseline:
+        spc = skills.analyze_spc_series(
+            series, baseline_cl=baseline.get("cl"), baseline_sigma=baseline.get("sigma"),
+            baseline_ucl=baseline.get("ucl"), baseline_lcl=baseline.get("lcl"))
+    else:
+        spc = skills.analyze_spc_series(series)
     scan_detail = f"{spc['n_points']} samples on {process} · source: {data_source}"
 
     if spc["in_control"]:
@@ -96,7 +104,7 @@ def run_scan(process_name: str | None = None, scenario: str = "shift") -> dict[s
 
     copq = skills.calculate_copq(**_COPQ)
     alert = {
-        "title": f"[Arad] SPC violation on {process}",
+        "title": f"[Quality AI] SPC violation on {process}",
         "message": (f"{spc['summary']} Estimated impact ${copq['total_copq']:,.0f} this event; "
                     f"early autonomous detection saves ${copq['savings_from_early_detection']:,.0f} "
                     f"vs once-per-shift inspection. Recommend stopping the line and checking tool wear."),
@@ -121,11 +129,32 @@ def run_scan(process_name: str | None = None, scenario: str = "shift") -> dict[s
     }
 
 
+def _copq_for(spc: dict[str, Any]) -> float:
+    """Per-process Cost of Poor Quality. The out-of-control *duration* scales with how many
+    points actually breached 3σ (rule_1), so a hard drift costs more than a mild wobble —
+    giving real cost variance across the fleet instead of one flat number for everyone."""
+    if spc["in_control"]:
+        return 0.0
+    breaches = sum(1 for v in spc["violations"] if v["rule"] == "rule_1")
+    params = dict(_COPQ)
+    # ~0.05h of out-of-control production per breached point, capped so it stays realistic.
+    # A ~10-point drift → 0.5h → matches the single-process scan's COPQ for the same line.
+    params["hours_out_of_control"] = round(min(max(breaches, 1) * 0.05, 4.0), 3)
+    return round(skills.calculate_copq(**params)["total_copq"], 2)
+
+
 def _fleet_row(process: str, series: list[float]) -> dict[str, Any]:
-    spc = skills.analyze_spc_series(series)
-    copq_total = 0.0 if spc["in_control"] else skills.calculate_copq(**_COPQ)["total_copq"]
+    # Judge each process against its own frozen baseline (same limits as the SPC monitor),
+    # so the fleet violation counts are realistic — not inflated by a drifting tail.
+    baseline = backend_client.get_baseline(process)
+    if baseline:
+        spc = skills.analyze_spc_series(
+            series, baseline_cl=baseline.get("cl"), baseline_sigma=baseline.get("sigma"),
+            baseline_ucl=baseline.get("ucl"), baseline_lcl=baseline.get("lcl"))
+    else:
+        spc = skills.analyze_spc_series(series)
     return {"process": process, "in_control": spc["in_control"],
-            "violation_count": spc["violation_count"], "copq_total": copq_total}
+            "violation_count": spc["violation_count"], "copq_total": _copq_for(spc)}
 
 
 def run_fleet() -> dict[str, Any]:

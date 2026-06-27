@@ -94,7 +94,7 @@ export default function Sidebar() {
                     className="text-display truncate text-[15px] font-semibold leading-tight"
                     style={{ color: "var(--text-primary)" }}
                   >
-                    Arad Quality
+                    Quality AI
                   </span>
                   <span
                     className="truncate font-mono text-[9.5px] font-medium uppercase tracking-[0.18em]"

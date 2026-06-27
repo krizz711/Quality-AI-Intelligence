@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Generate docs/assets/architecture.svg — a professional system-architecture
-diagram for Arad Quality Intelligence with embedded brand logos.
+diagram for Quality AI Intelligence with embedded brand logos.
 
 Run from anywhere:  python docs/assets/build_architecture.py
 
@@ -176,7 +176,7 @@ p = [f'<rect width="{W}" height="{H}" fill="#F1F5F9"/>',
      f'<rect x="0.5" y="0.5" width="{W - 1}" height="{H - 1}" rx="6" fill="none" stroke="#E2E8F0"/>']
 
 # Title
-p.append(text(W / 2, 42, "Arad Quality Intelligence", size=27, color="#0F172A", weight="800"))
+p.append(text(W / 2, 42, "Quality AI Intelligence", size=27, color="#0F172A", weight="800"))
 p.append(text(W / 2, 66, "System Architecture — automated GR&R, SPC, and 24/7 alerting", size=13, color="#64748B", weight="500"))
 
 CW = 212  # standard card width

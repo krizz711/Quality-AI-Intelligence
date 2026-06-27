@@ -605,7 +605,7 @@ export default function ChatPage() {
           <AgentCore size={40} state={thinking ? "thinking" : "idle"} />
           <div>
             <h1 className="text-display text-[17px] font-semibold leading-tight" style={{ color: "var(--text-primary)" }}>
-              Arad Quality Agent
+              Quality AI Intelligence Agent
             </h1>
             <p className="mt-0.5 text-[11.5px]" style={{ color: "var(--text-muted)" }}>
               Gemini reasoning · live system context

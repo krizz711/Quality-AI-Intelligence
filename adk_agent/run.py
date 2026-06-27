@@ -1,4 +1,4 @@
-"""Run the Arad Quality ADK agent from the command line.
+"""Run the Quality AI ADK agent from the command line.
 
     python -m adk_agent.run "Run a sample gage study and tell me if it's acceptable"
     python -m adk_agent.run            # interactive REPL
@@ -122,7 +122,7 @@ async def stream_query(query: str, *, session_id: str | None = None, user_id: st
 
 
 async def _repl() -> None:
-    print("Arad Quality agent — type a question (Ctrl+C to exit).")
+    print("Quality AI agent — type a question (Ctrl+C to exit).")
     while True:
         try:
             query = input("\n> ").strip()

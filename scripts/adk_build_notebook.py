@@ -18,7 +18,7 @@ def code(t): return nbf.v4.new_code_cell(t.strip("\n"))
 
 cells = [
     md("""
-# Arad Quality Intelligence — Capstone (Agents for Business)
+# Quality AI Intelligence — Capstone (Agents for Business)
 
 A **Google ADK multi-agent system** built *on top of a production manufacturing-quality
 platform*. It reuses the platform's validated AIAG GR&R + SPC engine and its real
