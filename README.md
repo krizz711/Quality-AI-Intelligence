@@ -27,6 +27,19 @@
   <img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-22c55e?style=flat-square">
 </p>
 
+<p>
+  <img src="docs/assets/screenshots/agent_scan.png" width="92%"
+       alt="The AI Agent console: a multi-agent scan flags an out-of-control process, prices the event at $11,970 of avoided Cost of Poor Quality, drafts a Slack and JIRA alert, and waits for human approval before sending anything.">
+</p>
+
+<sub>The multi‑agent console: <b>detect → price in dollars → draft → human approval</b>, in one autonomous scan.</sub>
+
+<p>
+  📺 <b><a href="https://youtu.be/REPLACE_WITH_YOUR_VIDEO_ID">Watch the 5‑minute demo</a></b>
+  &nbsp;·&nbsp; 🏷️ Track: <b>Agents for Business</b>
+  &nbsp;·&nbsp; 🛠️ <a href="#running-it">Run it yourself</a>
+</p>
+
 </div>
 
 ---
@@ -55,7 +68,8 @@ is sent**. The run is saved to the agent's persistent memory (inspect with
 1. [What is Quality AI Intelligence?](#what-is-quality-ai-intelligence)
 2. [The problem — quality work that eats days](#the-problem--quality-work-that-eats-days)
 3. [The solution — an agent that never sleeps](#the-solution--an-agent-that-never-sleeps)
-4. [The AI agent layer (Google ADK)](#the-ai-agent-layer-google-adk)
+4. [See it in action](#see-it-in-action)
+5. [The AI agent layer (Google ADK)](#the-ai-agent-layer-google-adk)
    - [Multi‑agent architecture](#multi-agent-architecture)
    - [How the agent connects to the system](#how-the-agent-connects-to-the-system)
    - [Human‑in‑the‑loop (HITL)](#human-in-the-loop-hitl)
@@ -142,6 +156,29 @@ goes from *hours‑to‑days and manual* to **seconds and automatic**, and monit
 | Detect an out‑of‑control point | **Next manual SPC check** (per shift) | **≤ 30 s** after it happens |
 | Price the business impact | Rarely done | **Instant COPQ in dollars** |
 | Notify the right people | **Hours**, depends on who's watching | **Seconds**, automatic & multi‑channel, human‑approved |
+
+---
+
+## See it in action
+
+<table>
+<tr>
+<td width="50%">
+  <img src="docs/assets/screenshots/spc_violation.png" alt="SPC monitor — a control point crosses the upper control limit and is flagged as a special-cause violation"><br>
+  <sub><b>Live SPC monitor.</b> I‑MR control chart with the eight Nelson / Western‑Electric rules — a point crosses the limit and is flagged in seconds, not shifts.</sub>
+</td>
+<td width="50%">
+  <img src="docs/assets/screenshots/agent_scan.png" alt="AI Agent console — a multi-agent scan prices the violation at $11,970 and drafts a human-approved alert"><br>
+  <sub><b>Autonomous multi‑agent scan.</b> Detect → price in dollars (Cost of Poor Quality) → draft Slack/JIRA → <b>human approval</b>.</sub>
+</td>
+</tr>
+<tr>
+<td colspan="2">
+  <img src="docs/assets/screenshots/alert_inbox.png" alt="Alert inbox — open alerts with an accuracy score and one-click resolve / relevant / false-positive actions"><br>
+  <sub><b>Closed‑loop alert inbox.</b> Each alert carries an AI explanation and a recommended action; engineers mark <i>relevant</i> / <i>false‑positive</i> (feeding the accuracy score) and resolve — every decision written to the audit trail.</sub>
+</td>
+</tr>
+</table>
 
 ---
 
