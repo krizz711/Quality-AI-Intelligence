@@ -2,7 +2,7 @@
 
 ### An autonomous, multi‑agent quality engineer for the factory floor — it detects process drift, prices the impact in dollars, and drafts a human‑approved corrective action, in seconds instead of days.
 
-**Track: Agents for Business** · **Code:** https://github.com/krizz711/Quality-AI-Intelligence · **Video:** _<add your YouTube link>_
+**Track: Agents for Business** · **Code:** https://github.com/krizz711/Quality-AI-Intelligence · **Video:** https://youtu.be/0KSBPAbnSQs?si=iDXatmEPptXvCrhO
 
 ---
 
@@ -29,7 +29,7 @@ Each step has a different "shape": some demand determinism and auditability, oth
 
 ## The solution
 
-**Quality AI Intelligence** ("Arad") is a self‑hosted platform with a Google ADK multi‑agent layer on top of a real production stack. In a single autonomous scan it will:
+**Quality AI Intelligence**  is a self‑hosted platform with a Google ADK multi‑agent layer on top of a real production stack. In a single autonomous scan it will:
 
 - **Detect** — run Individuals & Moving‑Range (I‑MR) control charts and screen every active series against all eight Nelson / Western‑Electric rules, every 30 seconds over a rolling window.
 - **Price** — translate the violation into **COPQ in US dollars** for this event, plus the annualized savings of catching it autonomously instead of once‑per‑shift.
