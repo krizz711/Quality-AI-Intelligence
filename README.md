@@ -109,9 +109,14 @@ is AIAG‑correct, and every integration is configured from a point‑and‑clic
 
 In a typical plant, keeping a process "in control" is a **manual, reactive, after‑the‑fact** grind:
 
-```text
-  Measure parts ─▶ type into Excel/Minitab ─▶ run GR&R by hand ─▶ build SPC charts
-        ─▶ eyeball them for violations ─▶ write a report ─▶ email whoever needs to know
+```mermaid
+flowchart LR
+    A[Measure parts] --> B[Type into Excel/Minitab]
+    B --> C[Run GR&R by hand]
+    C --> D[Build SPC charts]
+    D --> E[Eyeball charts for violations]
+    E --> F[Write a report]
+    F --> G[Email whoever needs to know]
 ```
 
 | Pain point | What it actually costs |
@@ -255,8 +260,24 @@ state) are stored through `DatabaseSessionService` in **TimescaleDB** — the sa
 platform uses for measurements — so context survives across turns *and* process restarts.
 Resolution is automatic and graceful:
 
-```text
-ADK_SESSION_DB_URL  ▶  DATABASE_URL (TimescaleDB)  ▶  logs/adk_sessions.db (SQLite)  ▶  in‑memory
+```mermaid
+flowchart LR
+    A["ADK_SESSION_DB_URL<br/>(explicit override)"] --> B{"Available?"}
+    B -->|Yes| C["Use ADK_SESSION_DB_URL"]
+    B -->|No| D["DATABASE_URL<br/>(TimescaleDB)"]
+
+    D --> E{"DB reachable<br/>and valid?"}
+    E -->|Yes| F["Use TimescaleDB session store"]
+    E -->|No| G["logs/adk_sessions.db<br/>(SQLite fallback)"]
+
+    G --> H{"SQLite usable?"}
+    H -->|Yes| I["Use SQLite session store"]
+    H -->|No| J["In-memory session store<br/>(last resort)"]
+
+    C --> K["ADK Session Backend Selected"]
+    F --> K
+    I --> K
+    J --> K
 ```
 
 Each specialist writes its finding into `session.state` via an `output_key`
@@ -476,8 +497,8 @@ timescaledb`) or run `make demo-timescale`.
 
 ```powershell
 # 1 ▸ Clone
-git clone https://github.com/krizz711/Quality-Control-GR-R-Analysis-Agent.git
-cd Quality-Control-GR-R-Analysis-Agent
+git clone https://github.com/krizz711/Quality-AI-Intelligence.git
+cd Quality-AI-Intelligence
 
 # 2 ▸ Create your secrets file from the template
 Copy-Item .env.example .env          # macOS/Linux: cp .env.example .env
@@ -680,7 +701,7 @@ More detail and step‑by‑step walkthroughs: [TESTING.md](TESTING.md),
 ## Project layout
 
 ```text
-Quality-Control-GR-R-Analysis-Agent/
+Quality-AI-Intelligence/
 ├── adk_agent/        # Google ADK multi-agent layer: agents, skills, MCP server,
 │                     #   guardrails, COPQ business logic, state (TimescaleDB), demo, tests
 ├── api/              # FastAPI REST API (api/quality_routes.py, ai_routes.py)
