@@ -25,6 +25,6 @@ jobs:
       uses: docker/build-push-action@v5
       with:
         context: .
-        file: ./docker/dockerfile.api # Fixed: Changed from capital D to lowercase d
+        file: ./docker/dockerfile.api
         push: true
-        tags: ${{ secrets.DOCKER_USERNAME }} /quality-ai-api:latest
+        tags: ${{ secrets.DOCKER_USERNAME }}/quality-ai-api:latest
