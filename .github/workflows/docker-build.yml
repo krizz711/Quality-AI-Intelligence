@@ -15,8 +15,20 @@ jobs:
     - name: Log in to Docker Hub
       run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
 
-    - name: Build and Push Image
+    - name: Dynamically Find and Build Dockerfile
       run: |
-        # Manually runs the exact build targeting your custom file structure
-        docker build -t ${{ secrets.DOCKER_USERNAME }}/quality-ai-api:latest -f docker/Dockerfile.api .
+        # 1. Search the repository for any Dockerfile matching 'api' or 'backend'
+        TARGET_FILE=$(find . -type f -iname "*dockerfile*api*" -o -iname "*dockerfile*backend*" | head -n 1)
+        
+        # 2. If nothing is found, fallback to the first standard Dockerfile in the docker folder
+        if [ -z "$TARGET_FILE" ]; then
+          TARGET_FILE=$(find ./docker -type f -name "Dockerfile*" | head -n 1)
+        fi
+        
+        echo "Successfully found target Dockerfile path at: $TARGET_FILE"
+        
+        # 3. Build using the dynamically discovered file path configuration
+        docker build -t ${{ secrets.DOCKER_USERNAME }}/quality-ai-api:latest -f "$TARGET_FILE" .
+        
+        # 4. Push to your registry
         docker push ${{ secrets.DOCKER_USERNAME }}/quality-ai-api:latest
