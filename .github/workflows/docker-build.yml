@@ -25,6 +25,6 @@ jobs:
       uses: docker/build-push-action@v5
       with:
         context: .
-        file: ./docker/Dockerfile.api
+        file: docker/Dockerfile.api  # Points to the file inside the subfolder
         push: true
         tags: ${{ secrets.DOCKER_USERNAME }}/quality-ai-api:latest
