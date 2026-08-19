@@ -57,8 +57,8 @@ def build_root_agent(model=None) -> Agent:
 
     ``output_key`` writes each specialist's final answer into ``session.state``, so its
     findings persist (via the TimescaleDB session store — see ``adk_agent.state``) and
-    the coordinator can recall them on later turns instead of recomputing. This is the
-    "context engineering / state management" the capstone asks for.
+    the coordinator can recall them on later turns instead of recomputing — context
+    engineering / state management, so a finding is recalled rather than recomputed.
     """
     model = model if model is not None else MODEL
 

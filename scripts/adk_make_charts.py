@@ -1,4 +1,4 @@
-"""Generate figures for the ADK capstone notebook/README (notebook/).
+"""Generate figures for the agent demo notebook/README (notebook/).
 
     .venv-adk/Scripts/python scripts/adk_make_charts.py
 """

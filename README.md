@@ -31,9 +31,7 @@
 <sub>The multi‑agent console: <b>detect → price in dollars → draft → human approval</b>, in one autonomous scan.</sub>
 
 <p>
-  📺 <b><a href="https://youtu.be/0KSBPAbnSQs?si=OLl_lknMUzsTJvQa">Watch the 5‑minute demo</a></b>
-  &nbsp;·&nbsp; 🏷️ Track: <b>Agents for Business</b>
-  &nbsp;·&nbsp; 🛠️ <a href="#running-it">Run it yourself</a>
+  🛠️ <a href="#running-it">Run it yourself</a>
 </p>
 
 </div>
@@ -69,7 +67,7 @@ is sent**. The run is saved to the agent's persistent memory (inspect with
    - [How the agent connects to the system](#how-the-agent-connects-to-the-system)
    - [Human‑in‑the‑loop (HITL)](#human-in-the-loop-hitl)
    - [Context engineering — state in TimescaleDB](#context-engineering--state-in-timescaledb)
-   - [Capstone concepts demonstrated](#capstone-concepts-demonstrated)
+   - [Agent-layer capabilities at a glance](#agent-layer-capabilities-at-a-glance)
 5. [Key features & advantages](#key-features--advantages)
 6. [Technology stack](#technology-stack)
 7. [Architecture](#architecture)
@@ -99,9 +97,6 @@ that turns raw measurements into a priced, human‑approved action:
 
 It is built for **quality engineers, not developers**: data comes in automatically, the math
 is AIAG‑correct, and every integration is configured from a point‑and‑click dashboard.
-
-> Built for the **Kaggle × Google "Agents for Business"** capstone — the submission *is* the
-> real product, made ADK‑compliant rather than a throwaway demo.
 
 ---
 
@@ -286,7 +281,7 @@ Each specialist writes its finding into `session.state` via an `output_key`
 recomputing. See [`adk_agent/state.py`](adk_agent/state.py); run `python -m adk_agent.state` to
 see the active backend and stored sessions.
 
-### Capstone concepts demonstrated
+### Agent-layer capabilities at a glance
 
 | Concept | Where |
 |---------|-------|
@@ -712,7 +707,7 @@ Quality-AI-Intelligence/
 ├── core/             # Config + Fernet-encrypted settings store
 ├── db/, alembic/     # SQLAlchemy models + migrations (TimescaleDB hypertables)
 ├── dashboard/        # Next.js 16 quality dashboard (incl. the live "AI Agent" page)
-├── notebook/         # capstone_demo.ipynb — the agent story end to end with charts
+├── notebook/         # the agent story end to end, with charts
 ├── docker/           # Service Dockerfiles
 ├── monitoring/       # Prometheus + Grafana provisioning
 ├── tests/            # Unit, integration, contract, performance, e2e

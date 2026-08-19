@@ -43,7 +43,7 @@ prod-check:
 	poetry run pytest -m "not integration"
 	cd dashboard && npm run build
 
-# ─── Kaggle ADK capstone: one-command demo + tests (lean venv, no API key) ────
+# ─── ADK agent layer: one-command demo + tests (lean venv, no API key) ───────
 # `make demo` runs the full agent loop offline: live drift -> SPC detection ->
 # dollar impact (COPQ) -> drafted action -> human-in-the-loop gate, and persists
 # the run to the session store. Add --send by running the module directly.

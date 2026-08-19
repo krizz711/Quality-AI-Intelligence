@@ -1,4 +1,4 @@
-"""Generate the Kaggle submission notebook (notebook/capstone_demo.ipynb).
+"""Generate the agent demo notebook (notebook/agent_demo.ipynb).
 
     .venv-adk/Scripts/python scripts/adk_build_notebook.py
 """
@@ -9,7 +9,7 @@ import pathlib
 
 import nbformat as nbf
 
-OUT = pathlib.Path(__file__).resolve().parent.parent / "notebook" / "capstone_demo.ipynb"
+OUT = pathlib.Path(__file__).resolve().parent.parent / "notebook" / "agent_demo.ipynb"
 
 
 def md(t): return nbf.v4.new_markdown_cell(t.strip("\n"))
@@ -18,11 +18,11 @@ def code(t): return nbf.v4.new_code_cell(t.strip("\n"))
 
 cells = [
     md("""
-# Quality AI Intelligence — Capstone (Agents for Business)
+# Quality AI Intelligence — autonomous multi-agent quality control
 
 A **Google ADK multi-agent system** built *on top of a production manufacturing-quality
 platform*. It reuses the platform's validated AIAG GR&R + SPC engine and its real
-Slack/JIRA alerting, and adds the capstone concepts: ADK multi-agent orchestration,
+Slack/JIRA alerting, and adds ADK multi-agent orchestration,
 an MCP server, agent skills, security guardrails — plus a **Cost-of-Poor-Quality**
 business layer that reports impact in dollars.
 

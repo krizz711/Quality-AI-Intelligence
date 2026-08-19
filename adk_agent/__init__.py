@@ -2,9 +2,9 @@
 
 A multi-agent system built with Google's Agent Development Kit that sits on top of
 this project's existing, production-validated quality engine (`grr`, `spc`) and its
-alerting integrations. It adds the things the Kaggle capstone scores — ADK
-multi-agent orchestration, an MCP server, agent skills, security guardrails — while
-reusing the real GR&R/SPC math and Slack/JIRA dispatch.
+alerting integrations. It adds ADK multi-agent orchestration, an MCP server,
+agent skills and security guardrails — while reusing the real GR&R/SPC math and
+Slack/JIRA dispatch.
 
 The layer runs standalone (just numpy/pandas/scipy + google-adk + mcp); it does not
 require the full Kafka/Postgres/MLflow stack.

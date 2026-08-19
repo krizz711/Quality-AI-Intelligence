@@ -1,4 +1,4 @@
-"""Security guardrails + audit trail (the 'security' capstone concept).
+"""Security guardrails + audit trail.
 
 * `block_unsafe_input` (before_model_callback) — refuses prompt-injection,
   credential-exfiltration, and malicious requests before the model is ever called.

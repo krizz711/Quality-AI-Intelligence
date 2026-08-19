@@ -3,7 +3,7 @@
 Each cycle pulls the latest measurements, runs SPC, and when it finds special-cause
 variation it computes the dollar impact (COPQ) and dispatches an alert. The
 production streaming monitor lives in `agent/monitor.py`; this is the standalone,
-agent-skills version for the capstone.
+agent-skills version.
 
     python -m adk_agent.monitor                 # 5 cycles, DRY-RUN
     python -m adk_agent.monitor --send          # actually dispatch to Slack/JIRA

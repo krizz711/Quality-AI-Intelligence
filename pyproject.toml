@@ -53,7 +53,7 @@ mypy = "^1.13"
 pytest-cov = "^7.1.0"
 confluent-kafka = "^2.14.0"
 
-# Kaggle ADK capstone layer (adk_agent/). Install with: poetry install --with adk
+# ADK agent layer (adk_agent/). Install with: poetry install --with adk
 # or, standalone:  pip install google-adk litellm mcp python-dotenv requests matplotlib nbformat
 [tool.poetry.group.adk]
 optional = true
